@@ -1,0 +1,27 @@
+{
+  "name": "Lâbal — Enquête Assainissement",
+  "short_name": "Lâbal",
+  "description": "Plateforme d'enquête et de gestion des déchets ménagers pour l'assainissement urbain en Guinée (Conakry).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#064420",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-labal.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-labal.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "business"],
+  "lang": "fr",
+  "dir": "ltr"
+}
