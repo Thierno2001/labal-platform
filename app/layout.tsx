@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 
 export const metadata: Metadata = {
   title: "Labal — Plateforme d'Enquête Assainissement Urbain",
@@ -45,15 +46,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col bg-white text-labal-deep">
-        <OfflineBanner />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-labal-gray-medium py-6 px-4 text-center text-sm text-labal-gray-dark">
-          <p>
-            © {new Date().getFullYear()} Labal — Assainissement Urbain Guinée.
-            Tous droits réservés.
-          </p>
-        </footer>
+        <AuthProvider>
+          <OfflineBanner />
+          <Header />
+          <main className="flex-1">{children}</main>
+          <footer className="border-t border-labal-gray-medium py-6 px-4 text-center text-sm text-labal-gray-dark">
+            <p>
+              © {new Date().getFullYear()} Labal — Assainissement Urbain Guinée.
+              Tous droits réservés.
+            </p>
+          </footer>
+        </AuthProvider>
       </body>
     </html>
   );

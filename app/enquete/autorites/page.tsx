@@ -24,9 +24,19 @@ import Section14 from "@/components/forms/autorites/Section14";
 import Section15 from "@/components/forms/autorites/Section15";
 import Section16 from "@/components/forms/autorites/Section16";
 
+import { RoleGuard } from "@/components/auth/RoleGuard";
+
 const STORAGE_KEY = "labal_autorites_draft";
 
 export default function AutoritesSurveyPage() {
+  return (
+    <RoleGuard allowedRoles={["ADMIN", "ENQUETEUR"]} requireApproved={true}>
+      <AutoritesContent />
+    </RoleGuard>
+  );
+}
+
+function AutoritesContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -34,9 +34,19 @@ import { KpiCard, StatCard } from "@/components/dashboard/KpiCard";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { COLORS, COMMUNES } from "@/lib/constants";
 
+import { RoleGuard } from "@/components/auth/RoleGuard";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default function DashboardPage() {
+  return (
+    <RoleGuard allowedRoles={["ADMIN"]}>
+      <DashboardContent />
+    </RoleGuard>
+  );
+}
+
+function DashboardContent() {
   const [selectedCommune, setSelectedCommune] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [selectedActor, setSelectedActor] = useState("all");

@@ -24,10 +24,20 @@ import { Section14 } from "@/components/forms/menages/Section14";
 import { Section15 } from "@/components/forms/menages/Section15";
 import { Section16 } from "@/components/forms/menages/Section16";
 
+import { RoleGuard } from "@/components/auth/RoleGuard";
+
 const TOTAL_STEPS = 16;
 const DRAFT_KEY = "labal_menages_draft";
 
 export default function MenagesSurveyPage() {
+  return (
+    <RoleGuard allowedRoles={["ADMIN", "ENQUETEUR"]} requireApproved={true}>
+      <MenagesSurveyContent />
+    </RoleGuard>
+  );
+}
+
+function MenagesSurveyContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);

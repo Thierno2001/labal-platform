@@ -25,10 +25,20 @@ import { Section14 } from "@/components/forms/pme/Section14";
 import { Section15 } from "@/components/forms/pme/Section15";
 import { Section16 } from "@/components/forms/pme/Section16";
 
+import { RoleGuard } from "@/components/auth/RoleGuard";
+
 const FORM_TYPE = "pme";
 const TOTAL_STEPS = 16;
 
 export default function PmeFormPage() {
+  return (
+    <RoleGuard allowedRoles={["ADMIN", "ENQUETEUR"]} requireApproved={true}>
+      <PmeFormContent />
+    </RoleGuard>
+  );
+}
+
+function PmeFormContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);

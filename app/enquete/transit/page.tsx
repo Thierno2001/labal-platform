@@ -23,10 +23,20 @@ import Section14 from "@/components/forms/transit/Section14";
 import Section15 from "@/components/forms/transit/Section15";
 import Section16 from "@/components/forms/transit/Section16";
 
+import { RoleGuard } from "@/components/auth/RoleGuard";
+
 const TOTAL_STEPS = 16;
 const STORAGE_KEY = "labal_transit_form_draft";
 
 export default function TransitPage() {
+  return (
+    <RoleGuard allowedRoles={["ADMIN", "ENQUETEUR"]} requireApproved={true}>
+      <TransitContent />
+    </RoleGuard>
+  );
+}
+
+function TransitContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
