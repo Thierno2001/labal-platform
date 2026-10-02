@@ -25,7 +25,7 @@ const actorCards = [
     title: "PME de Collecte",
     subtitle: "CONAAG & Collecteurs",
     description:
-      "Diagnostic complet des entreprises de pré-collecte : équipements, modèle économique, rémunération et adhésion Lâbal.",
+      "Diagnostic complet des entreprises de pré-collecte : équipements, modèle économique, rémunération et adhésion Labal.",
     sections: 16,
     badge: "Formulaire PME",
   },
@@ -157,7 +157,7 @@ export default function HomePage() {
                   <div className="relative w-full h-full rounded-2xl overflow-hidden">
                     <Image
                       src="/logo-labal.jpeg"
-                      alt="Plateforme Lâbal — Assainissement Urbain Guinée"
+                      alt="Plateforme Labal — Assainissement Urbain Guinée"
                       fill
                       className="object-cover hover:scale-105 transition-transform duration-700"
                       priority

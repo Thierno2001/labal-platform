@@ -37,10 +37,10 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
 
   // Global settings
   pptx.layout = "LAYOUT_WIDE"; // 16:9
-  pptx.author = "Lâbal — Plateforme Assainissement";
-  pptx.company = "Lâbal Guinée";
+  pptx.author = "Labal — Plateforme Assainissement";
+  pptx.company = "Labal Guinée";
   pptx.subject = "Rapport d'Enquête Assainissement Urbain — Conakry";
-  pptx.title = "Lâbal — Enquête Assainissement Conakry";
+  pptx.title = "Labal — Enquête Assainissement Conakry";
 
   const deepGreen = COLORS.deep.replace("#", "");
   const limeGreen = COLORS.lime.replace("#", "");
@@ -136,7 +136,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   // KPI boxes
   const kpis = [
     { value: data.kpis.totalEnquetes.toString(), label: "Total Enquêtes" },
-    { value: `${data.kpis.tauxLabal}%`, label: "Intérêt Lâbal" },
+    { value: `${data.kpis.tauxLabal}%`, label: "Intérêt Labal" },
     { value: `${data.kpis.mobileMoney}%`, label: "Mobile Money" },
     { value: `${data.kpis.saturationCritique}%`, label: "Saturation Critique" },
   ];
@@ -325,7 +325,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   const slide5 = pptx.addSlide();
   slide5.background = { color: white };
 
-  slide5.addText("Intérêt pour la Plateforme Lâbal par Acteur", {
+  slide5.addText("Intérêt pour la Plateforme Labal par Acteur", {
     x: 0.5,
     y: 0.3,
     w: 9,
@@ -453,7 +453,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   });
 
   const conclusions = [
-    `• ${data.kpis.tauxLabal}% des acteurs sont prêts à adopter la plateforme numérique Lâbal`,
+    `• ${data.kpis.tauxLabal}% des acteurs sont prêts à adopter la plateforme numérique Labal`,
     `• Le paiement mobile (Orange/MTN Money) représente ${data.kpis.mobileMoney}% des transactions`,
     `• ${data.kpis.saturationCritique}% des zones de transit connaissent une saturation critique quotidienne`,
     `• ${data.kpis.totalEnquetes} enquêtes collectées auprès des 4 types d'acteurs`,
@@ -461,7 +461,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     "Recommandations :",
     "• Accélérer le déploiement de la solution Mobile Money pour réduire les litiges",
     "• Prioriser les communes avec saturation quotidienne pour le suivi GPS",
-    "• Lancer la phase pilote Lâbal avec les 5-10 PME les plus engagées",
+    "• Lancer la phase pilote Labal avec les 5-10 PME les plus engagées",
   ];
 
   slide7.addText(conclusions.join("\n"), {
@@ -502,7 +502,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     align: "center",
   });
 
-  slide8.addText("Plateforme Lâbal — Assainissement Urbain Guinée", {
+  slide8.addText("Plateforme Labal — Assainissement Urbain Guinée", {
     x: 1,
     y: 3.2,
     w: 8,

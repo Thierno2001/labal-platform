@@ -15,8 +15,8 @@ interface Props {
 
 export function Section16({ control, register, errors }: Props) {
   return (
-    <FormSection title="Attentes Lâbal">
-      <RadioGroup label="Seriez-vous intéressé par Lâbal ?" name="interet_labal" options={INTERET_LABAL_OPTIONS} register={register("interet_labal")} error={errors.interet_labal?.message} />
+    <FormSection title="Attentes Labal">
+      <RadioGroup label="Seriez-vous intéressé par Labal ?" name="interet_labal" options={INTERET_LABAL_OPTIONS} register={register("interet_labal")} error={errors.interet_labal?.message} />
       <Controller
         name="modules_prioritaires"
         control={control}
@@ -30,7 +30,7 @@ export function Section16({ control, register, errors }: Props) {
         <h4 className="font-semibold text-labal-deep border-b border-labal-lime pb-2">Informations de contact</h4>
         <TextField label="Nom du contact" name="nom_contact" register={register("nom_contact")} required error={errors.nom_contact?.message} />
         <TextField label="Téléphone" name="telephone_contact" type="tel" register={register("telephone_contact")} required error={errors.telephone_contact?.message} />
-        <BooleanRadio label="Acceptez-vous d'être recontacté pour tester Lâbal ?" name="accord_recontact" register={register("accord_recontact")} error={errors.accord_recontact?.message} />
+        <BooleanRadio label="Acceptez-vous d'être recontacté pour tester Labal ?" name="accord_recontact" register={register("accord_recontact")} error={errors.accord_recontact?.message} />
       </div>
     </FormSection>
   );

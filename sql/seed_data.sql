@@ -124,7 +124,7 @@ INSERT INTO enquetes_menages (
   3, '["Emballages carton", "Plastiques & Bouteilles"]'::jsonb,
   'Coup de sifflet du collecteur', false, true,
   'Toujours à l''heure', true, false, 'SMS de confirmation', 'Confie les poubelles au gardien d''immeuble',
-  true, '["Geste écologique pour la ville", "Facilité d''accès à l''application Lâbal"]'::jsonb,
+  true, '["Geste écologique pour la ville", "Facilité d''accès à l''application Labal"]'::jsonb,
   '["Risques d''incendie des décharges", "Prolifération des rats et moustiques"]'::jsonb, true,
   50000, 'Très bon rapport qualité-prix', 'Orange Money', true, false,
   true, 'Quotidienne', 'Orange Money, WhatsApp, Tik Tok',
@@ -216,7 +216,7 @@ INSERT INTO enquetes_autorites (
   'Excel', 'Mensuel',
   true, true,
   '["Cartographie en temps réel des points noirs", "Suivi du taux de recouvrement des PME", "Alerte de saturation des ZST"]'::jsonb,
-  true, 'Dr. Alpha Oumar Diallo - +224 622 00 11 22', 'Digitaliser en priorité le paiement des abonnements PME via Lâbal'
+  true, 'Dr. Alpha Oumar Diallo - +224 622 00 11 22', 'Digitaliser en priorité le paiement des abonnements PME via Labal'
 ),
 (
   'Mme Kadiatou Traoré', 'Cheffe du Service Technique & Salubrité', 'Mairie de Ratoma', 'Ratoma',

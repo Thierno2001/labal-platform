@@ -59,12 +59,12 @@ export function initAutoSync() {
     const result = await syncPendingSubmissions();
     if (result.synced > 0) {
       console.log(
-        `[Lâbal Sync] ${result.synced} enquête(s) synchronisée(s) avec succès.`
+        `[Labal Sync] ${result.synced} enquête(s) synchronisée(s) avec succès.`
       );
     }
     if (result.failed > 0) {
       console.warn(
-        `[Lâbal Sync] ${result.failed} enquête(s) en échec de synchronisation.`
+        `[Labal Sync] ${result.failed} enquête(s) en échec de synchronisation.`
       );
     }
   });

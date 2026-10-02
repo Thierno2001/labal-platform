@@ -18,7 +18,7 @@ export interface PdfReportData {
 
 /**
  * Génère un rapport PDF sous forme de page HTML stylisée convertie en PDF.
- * Utilise les couleurs de la charte Lâbal : fond blanc, texte #064420, accents #76C01D.
+ * Utilise les couleurs de la charte Labal : fond blanc, texte #064420, accents #76C01D.
  */
 export function generatePdfHtml(data: PdfReportData): string {
   const { deep, lime } = COLORS;
@@ -27,7 +27,7 @@ export function generatePdfHtml(data: PdfReportData): string {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Lâbal — Rapport d'Analyse Assainissement</title>
+  <title>Labal — Rapport d'Analyse Assainissement</title>
   <style>
     @page { size: A4; margin: 20mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -222,7 +222,7 @@ export function generatePdfHtml(data: PdfReportData): string {
       </div>
       <div class="kpi-box">
         <div class="value">${data.kpis.tauxLabal}%</div>
-        <div class="label">Intérêt Lâbal</div>
+        <div class="label">Intérêt Labal</div>
       </div>
       <div class="kpi-box">
         <div class="value">${data.kpis.mobileMoney}%</div>
@@ -255,11 +255,11 @@ export function generatePdfHtml(data: PdfReportData): string {
     </div>
 
     <div class="highlight">
-      <strong>${data.kpis.tauxLabal}%</strong> des acteurs interrogés se déclarent prêts à intégrer la plateforme numérique Lâbal pour améliorer la gestion des déchets à Conakry.
+      <strong>${data.kpis.tauxLabal}%</strong> des acteurs interrogés se déclarent prêts à intégrer la plateforme numérique Labal pour améliorer la gestion des déchets à Conakry.
     </div>
   </div>
 
-  <!-- PAGE 2 : Ratio Paiement + Intérêt Lâbal -->
+  <!-- PAGE 2 : Ratio Paiement + Intérêt Labal -->
   <div class="page">
     <h2>Ratio Espèces vs Mobile Money par Commune</h2>
     <table>
@@ -291,7 +291,7 @@ export function generatePdfHtml(data: PdfReportData): string {
       </tbody>
     </table>
 
-    <h2>Intérêt pour Lâbal par Type d'Acteur</h2>
+    <h2>Intérêt pour Labal par Type d'Acteur</h2>
     <table>
       <thead>
         <tr>
@@ -340,7 +340,7 @@ export function generatePdfHtml(data: PdfReportData): string {
       </thead>
       <tbody>
         <tr>
-          <td>Taux d'adhésion Lâbal</td>
+          <td>Taux d'adhésion Labal</td>
           <td style="color: ${lime}; font-weight: 700;">${data.kpis.tauxLabal}%</td>
           <td>Forte acceptation de la plateforme numérique</td>
         </tr>
@@ -384,7 +384,7 @@ export function generatePdfHtml(data: PdfReportData): string {
         </tr>
         <tr>
           <td>4</td>
-          <td>Équiper les agents terrain en smartphones avec l'app Lâbal</td>
+          <td>Équiper les agents terrain en smartphones avec l'app Labal</td>
           <td>Moyenne</td>
         </tr>
         <tr>
@@ -396,7 +396,7 @@ export function generatePdfHtml(data: PdfReportData): string {
     </table>
 
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Lâbal — Plateforme d'Assainissement Urbain — Conakry, Guinée</p>
+      <p>© ${new Date().getFullYear()} Labal — Plateforme d'Assainissement Urbain — Conakry, Guinée</p>
       <p>Document confidentiel — Généré automatiquement le ${data.dateGeneration}</p>
     </div>
   </div>

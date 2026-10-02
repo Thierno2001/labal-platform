@@ -13,7 +13,7 @@ export default function Section15({ form }: SectionProps) {
   const { control, formState: { errors } } = form;
 
   return (
-    <FormSection title="Attentes Dashboard Lâbal" description="Fonctionnalités souhaitées">
+    <FormSection title="Attentes Dashboard Labal" description="Fonctionnalités souhaitées">
       <Controller
         name="besoins_dashboard"
         control={control}

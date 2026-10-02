@@ -38,7 +38,7 @@ export function Header() {
             <div className="relative w-11 h-11 rounded-xl overflow-hidden shadow-sm border border-labal-deep/10 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
               <Image
                 src="/logo-labal.jpeg"
-                alt="Lâbal"
+                alt="Labal"
                 fill
                 className="object-cover"
                 priority
@@ -48,7 +48,7 @@ export function Header() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xl sm:text-2xl font-black text-labal-deep tracking-tight">
-                  Lâbal
+                  Labal
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-labal-lime/15 text-labal-deep border border-labal-lime/30">
                   Guinée

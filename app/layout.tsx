@@ -4,11 +4,11 @@ import { Header } from "@/components/layout/Header";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 
 export const metadata: Metadata = {
-  title: "Lâbal — Plateforme d'Enquête Assainissement Urbain",
+  title: "Labal — Plateforme d'Enquête Assainissement Urbain",
   description:
     "Plateforme de gestion et d'enquête sur les déchets ménagers pour les acteurs du secteur de l'assainissement en Guinée (Conakry). Collecte de données PME, ménages, zones de transit et autorités locales.",
   keywords: [
-    "Lâbal",
+    "Labal",
     "assainissement",
     "Guinée",
     "Conakry",
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
     "PME collecte",
     "CONAAG",
   ],
-  authors: [{ name: "Lâbal" }],
+  authors: [{ name: "Labal" }],
   openGraph: {
-    title: "Lâbal — Enquête Assainissement Urbain Conakry",
+    title: "Labal — Enquête Assainissement Urbain Conakry",
     description:
       "Plateforme d'enquête et de gestion des déchets ménagers en Guinée.",
     type: "website",
@@ -50,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">{children}</main>
         <footer className="border-t border-labal-gray-medium py-6 px-4 text-center text-sm text-labal-gray-dark">
           <p>
-            © {new Date().getFullYear()} Lâbal — Assainissement Urbain Guinée.
+            © {new Date().getFullYear()} Labal — Assainissement Urbain Guinée.
             Tous droits réservés.
           </p>
         </footer>

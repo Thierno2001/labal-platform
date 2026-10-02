@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS enquetes_pme (
   outil_numerique_actuel TEXT CHECK (outil_numerique_actuel IN ('Aucun', 'WhatsApp', 'Excel', 'Logiciel')),
   nom_logiciel TEXT,
 
-  -- Section 16 : Attentes Lâbal
+  -- Section 16 : Attentes Labal
   interet_labal TEXT CHECK (interet_labal IN ('Oui', 'Non', 'Peut-être')),
   modules_prioritaires JSONB DEFAULT '[]'::jsonb,
   capacite_smartphone_collecteurs TEXT,
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS enquetes_menages (
   frequence_mobile_money TEXT,
   applications_favorites TEXT,
 
-  -- Section 16 : Intérêt Lâbal & Contact
+  -- Section 16 : Intérêt Labal & Contact
   pret_installer_labal BOOLEAN DEFAULT false,
   telephone_groupe_test TEXT,
   suggestions_amelioration TEXT
@@ -273,7 +273,7 @@ CREATE TABLE IF NOT EXISTS enquetes_transit (
   qualite_reseau_4g TEXT,
   smartphone_fonction BOOLEAN DEFAULT false,
 
-  -- Section 16 : Attentes Lâbal & Urgence
+  -- Section 16 : Attentes Labal & Urgence
   bouton_alerte_sos BOOLEAN DEFAULT false,
   suivi_gps_camions BOOLEAN DEFAULT false,
   contact_responsable TEXT,
@@ -354,10 +354,10 @@ CREATE TABLE IF NOT EXISTS enquetes_autorites (
   ordinateurs_mairie BOOLEAN DEFAULT false,
   smartphone_agents_terrain BOOLEAN DEFAULT false,
 
-  -- Section 15 : Attentes Dashboard Lâbal
+  -- Section 15 : Attentes Dashboard Labal
   besoins_dashboard JSONB DEFAULT '[]'::jsonb,
 
-  -- Section 16 : Engagement pilote Lâbal
+  -- Section 16 : Engagement pilote Labal
   point_focal_designe BOOLEAN DEFAULT false,
   coordonnees_point_focal TEXT,
   recommandations TEXT

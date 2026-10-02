@@ -101,7 +101,7 @@ export default function DashboardPage() {
 
     const totalEnquetes = totalPmeFiltered + totalMenagesFiltered + totalTransitFiltered + totalAutoritesFiltered;
 
-    // Taux d'intérêt Lâbal réel
+    // Taux d'intérêt Labal réel
     let intPme = pmeList.filter((x) => x.interet_labal === "Oui").length;
     let intMenages = menagesList.filter((x) => x.pret_installer_labal === true).length;
     let intTransit = transitList.filter((x) => x.bouton_alerte_sos === true).length;
@@ -175,7 +175,7 @@ export default function DashboardPage() {
     });
   }, [transitList]);
 
-  // Real Intérêt Lâbal par Acteur
+  // Real Intérêt Labal par Acteur
   const interetLabalReal = useMemo(() => {
     const calc = (list: any[], checkField: (item: any) => boolean) => {
       if (list.length === 0) return { oui: 0, peutEtre: 0, non: 0 };
@@ -233,7 +233,7 @@ export default function DashboardPage() {
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-labal-deep tracking-tight mt-1.5">
-              Tableau de Bord Analytique Lâbal
+              Tableau de Bord Analytique Labal
             </h1>
             <p className="text-xs sm:text-sm text-labal-gray-dark font-medium mt-0.5">
               Suivi analytique et agrégation en temps réel des enquêtes d&apos;assainissement
@@ -290,7 +290,7 @@ export default function DashboardPage() {
           <KpiCard
             icon={TrendingUp}
             value={`${metrics.tauxLabal}%`}
-            label="Intérêt Lâbal"
+            label="Intérêt Labal"
             trend="Adhésion"
             trendUp={true}
           />
@@ -401,8 +401,8 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </StatCard>
 
-          {/* Grouped Bar Chart: Intérêt Lâbal Réel */}
-          <StatCard title="Adhésion & Intérêt pour Lâbal par type d'acteur (%)">
+          {/* Grouped Bar Chart: Intérêt Labal Réel */}
+          <StatCard title="Adhésion & Intérêt pour Labal par type d'acteur (%)">
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={interetLabalReal}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />

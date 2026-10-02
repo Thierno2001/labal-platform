@@ -6,9 +6,9 @@ import { FormSection, TextField, TextAreaField, BooleanRadio } from "@/component
 
 export function Section16({ register, errors }: { register: UseFormReturn<MenagesFormData>["register"]; errors: any }) {
   return (
-    <FormSection title="Intérêt Lâbal">
+    <FormSection title="Intérêt Labal">
       <BooleanRadio
-        label="Prêt à installer l'application Lâbal"
+        label="Prêt à installer l'application Labal"
         name="pret_installer_labal"
         register={register("pret_installer_labal")}
         error={errors.pret_installer_labal?.message}

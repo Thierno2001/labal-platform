@@ -1,4 +1,4 @@
-// Lâbal Platform — Design Tokens & Constants
+// Labal Platform — Design Tokens & Constants
 
 // ============================================================
 // CHARTE GRAPHIQUE
@@ -348,7 +348,7 @@ export const PME_SECTION_LABELS = [
   'Tarification & Paiements',
   'Rémunération des collecteurs',
   'Difficultés & Outils',
-  'Attentes Lâbal',
+  'Attentes Labal',
 ] as const;
 
 export const MENAGES_SECTION_LABELS = [
@@ -367,7 +367,7 @@ export const MENAGES_SECTION_LABELS = [
   'Pratiques de paiement',
   'Détail des litiges',
   'Usage numérique',
-  'Intérêt Lâbal',
+  'Intérêt Labal',
 ] as const;
 
 export const TRANSIT_SECTION_LABELS = [
@@ -386,7 +386,7 @@ export const TRANSIT_SECTION_LABELS = [
   'Suivi financier',
   'Hygiène & Protection',
   'Environnement numérique',
-  'Attentes Lâbal',
+  'Attentes Labal',
 ] as const;
 
 export const AUTORITES_SECTION_LABELS = [
@@ -404,6 +404,6 @@ export const AUTORITES_SECTION_LABELS = [
   'Santé publique',
   'Statistiques & Rapports',
   'Équipement technique',
-  'Attentes Dashboard Lâbal',
-  'Engagement pilote Lâbal',
+  'Attentes Dashboard Labal',
+  'Engagement pilote Labal',
 ] as const;

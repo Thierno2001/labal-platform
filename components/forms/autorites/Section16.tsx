@@ -12,7 +12,7 @@ export default function Section16({ form }: SectionProps) {
   const { register, formState: { errors } } = form;
 
   return (
-    <FormSection title="Engagement pilote Lâbal" description="Participation au projet pilote">
+    <FormSection title="Engagement pilote Labal" description="Participation au projet pilote">
       <BooleanRadio
         label="Un point focal est-il désigné ?"
         register={register("point_focal_designe")}

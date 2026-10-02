@@ -140,7 +140,7 @@ export default function MenagesSurveyPage() {
     <form className="min-h-screen bg-labal-gray-light py-8" onSubmit={(e) => e.preventDefault()}>
       <div className="max-w-4xl mx-auto px-4 mb-8">
         <h1 className="text-3xl font-bold text-labal-deep">Enquête Ménages & Citoyens</h1>
-        <p className="text-labal-gray-dark mt-2">Formulaire de collecte de données - Lâbal Platform</p>
+        <p className="text-labal-gray-dark mt-2">Formulaire de collecte de données - Labal Platform</p>
       </div>
 
       <FormStepper
