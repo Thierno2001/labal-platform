@@ -28,7 +28,7 @@ import {
   Presentation,
   AlertTriangle,
   RefreshCw,
-  Database,
+  BarChart3,
 } from "lucide-react";
 import { KpiCard, StatCard } from "@/components/dashboard/KpiCard";
 import { FilterBar } from "@/components/dashboard/FilterBar";
