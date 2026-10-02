@@ -18,7 +18,6 @@ import {
   LogOut,
   UserPlus,
   LogIn,
-  User,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -29,19 +28,20 @@ export function Header() {
 
   const { currentUser, logout } = useAuth();
 
+  const isLoggedIn = !!currentUser;
+  const isUserApproved = currentUser?.status === "APPROVED";
   const isUserAdmin = currentUser?.role === "ADMIN";
 
-  // Navigation Items according to strict RBAC
+  // Strict RBAC Navigation Items:
+  // Survey links are shown ONLY when user is logged in & approved!
   const navItems = [
     { href: "/", label: "Accueil", icon: HomeIcon, show: true },
-    { href: "/enquete/pme", label: "PME Collecte", icon: Truck, show: true },
-    { href: "/enquete/menages", label: "Ménages", icon: HomeIcon, show: true },
-    { href: "/enquete/transit", label: "Zones Transit", icon: Recycle, show: true },
-    { href: "/enquete/autorites", label: "Autorités", icon: Building2, show: true },
-    // Strict RBAC: Show Dashboard ONLY for ADMIN
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: isUserAdmin },
-    // Strict RBAC: Show Administration ONLY for ADMIN
-    { href: "/admin/users", label: "Administration", icon: ShieldCheck, show: isUserAdmin },
+    { href: "/enquete/pme", label: "PME Collecte", icon: Truck, show: isLoggedIn && isUserApproved },
+    { href: "/enquete/menages", label: "Ménages", icon: HomeIcon, show: isLoggedIn && isUserApproved },
+    { href: "/enquete/transit", label: "Zones Transit", icon: Recycle, show: isLoggedIn && isUserApproved },
+    { href: "/enquete/autorites", label: "Autorités", icon: Building2, show: isLoggedIn && isUserApproved },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: isLoggedIn && isUserApproved && isUserAdmin },
+    { href: "/admin/users", label: "Administration", icon: ShieldCheck, show: isLoggedIn && isUserApproved && isUserAdmin },
   ];
 
   const visibleNavItems = navItems.filter((item) => item.show);
@@ -86,7 +86,7 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-white text-labal-deep shadow-sm border border-labal-deep/10 font-bold"
                       : "text-labal-gray-dark hover:text-labal-deep hover:bg-white/60"
@@ -102,7 +102,7 @@ export function Header() {
           {/* Auth & Profile Actions (Desktop) */}
           <div className="hidden lg:flex items-center gap-3">
             {currentUser ? (
-              /* User Profile Dropdown */
+              /* Logged In Profile Menu */
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -168,32 +168,35 @@ export function Header() {
                 )}
               </div>
             ) : (
-              /* Logged-out buttons */
-              <div className="flex items-center gap-2">
+              /* Unauthenticated Visitor Buttons */
+              <div className="flex items-center gap-2.5">
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-labal-deep font-bold rounded-xl border border-labal-deep/15 hover:bg-labal-gray-light text-xs transition-all touch-target"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-labal-deep text-white font-bold rounded-xl shadow-xs hover:bg-labal-deep/90 text-xs transition-all touch-target"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-labal-deep" />
+                  <LogIn className="w-3.5 h-3.5 text-labal-lime" />
                   Se Connecter
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-labal-lime text-labal-deep font-black rounded-xl hover:bg-labal-lime/90 text-xs transition-all touch-target shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-labal-lime text-labal-deep font-black rounded-xl hover:bg-labal-lime/90 text-xs transition-all touch-target shadow-xs"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  S&apos;inscrire (Enquêteur)
+                  Créer un Compte
                 </Link>
               </div>
             )}
 
-            <Link
-              href="/enquete/pme"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-labal-deep to-labal-deep/90 text-white font-bold rounded-xl hover:from-labal-deep/95 hover:to-labal-deep shadow-xs text-xs transition-all duration-200 border border-labal-lime/30"
-            >
-              <ClipboardList className="w-4 h-4 text-labal-lime" />
-              Lancer une enquête
-            </Link>
+            {/* Quick Survey Button - ONLY shown to logged-in approved users */}
+            {isLoggedIn && isUserApproved && (
+              <Link
+                href="/enquete/pme"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-labal-deep to-labal-deep/90 text-white font-bold rounded-xl hover:from-labal-deep/95 hover:to-labal-deep shadow-xs text-xs transition-all duration-200 border border-labal-lime/30"
+              >
+                <ClipboardList className="w-4 h-4 text-labal-lime" />
+                Lancer une enquête
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -223,8 +226,8 @@ export function Header() {
               </div>
             ) : (
               <div>
-                <p className="text-xs font-bold text-labal-deep">Non connecté</p>
-                <p className="text-[0.65rem] text-labal-gray-dark">Connectez-vous pour accéder à vos enquêtes</p>
+                <p className="text-xs font-bold text-labal-deep">Accès Réservé</p>
+                <p className="text-[0.65rem] text-labal-gray-dark">Connectez-vous pour accéder aux enquêtes</p>
               </div>
             )}
             {currentUser ? (
@@ -267,16 +270,27 @@ export function Header() {
               </Link>
             );
           })}
-          <div className="pt-2">
-            <Link
-              href="/enquete/pme"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-center gap-2 w-full py-3.5 bg-labal-deep text-white font-bold rounded-xl text-sm shadow-md"
-            >
-              <ClipboardList className="w-4 h-4 text-labal-lime" />
-              Lancer une nouvelle enquête
-            </Link>
-          </div>
+
+          {!isLoggedIn && (
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full py-3 bg-labal-deep text-white font-bold rounded-xl text-xs"
+              >
+                <LogIn className="w-4 h-4 text-labal-lime" />
+                Se Connecter
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full py-3 bg-labal-lime text-labal-deep font-black rounded-xl text-xs"
+              >
+                <UserPlus className="w-4 h-4" />
+                S&apos;inscrire comme Enquêteur
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>
