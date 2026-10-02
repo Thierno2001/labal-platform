@@ -13,14 +13,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    const success = login(email);
-    if (success) {
-      router.push("/");
-    } else {
-      setErrorMsg("Adresse email ou mot de passe incorrect. Veuillez réanalyser vos identifiants.");
+    setLoading(true);
+    try {
+      const res = await login(email, password);
+      if (res.success) {
+        router.push("/");
+      } else {
+        setErrorMsg(res.message || "Adresse email ou mot de passe incorrect.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

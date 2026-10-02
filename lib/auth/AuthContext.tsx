@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { UserProfile, AuditLog, UserRole, UserStatus } from "./types";
+import { UserProfile, AuditLog, UserStatus } from "./types";
+import { hashPassword, verifyPassword } from "./password";
 
 export const INITIAL_ADMINS: UserProfile[] = [
   {
@@ -12,6 +13,7 @@ export const INITIAL_ADMINS: UserProfile[] = [
     commune_affectation: "Toutes (Conakry)",
     role: "ADMIN",
     status: "APPROVED",
+    password_hash: "pbkdf2:sha256:100000$a1b2c3d4e5f60718293a4b5c6d7e8f00$3f0582f8ff52d5bc92d8eb493b7e17fed35a2ef5b09ee9851d230087dbc7e7d1",
     approved_by: "SYSTEM",
     approved_at: new Date().toISOString(),
     created_at: "2026-09-01T08:00:00Z",
@@ -24,6 +26,7 @@ export const INITIAL_ADMINS: UserProfile[] = [
     commune_affectation: "Toutes (Conakry)",
     role: "ADMIN",
     status: "APPROVED",
+    password_hash: "pbkdf2:sha256:100000$b2c3d4e5f60718293a4b5c6d7e8f00a1$d4391b42f3bfc68006be2a2bce2e6b158bee74b269d61219c661cba1bcfa69f4",
     approved_by: "SYSTEM",
     approved_at: new Date().toISOString(),
     created_at: "2026-09-01T08:00:00Z",
@@ -36,6 +39,7 @@ export const INITIAL_ADMINS: UserProfile[] = [
     commune_affectation: "Toutes (Conakry)",
     role: "ADMIN",
     status: "APPROVED",
+    password_hash: "pbkdf2:sha256:100000$c3d4e5f60718293a4b5c6d7e8f00a1b2$578e724db734882d2b7409211cb1b84a5dbc5c9a12acc060ea0861837eab7bd7",
     approved_by: "SYSTEM",
     approved_at: new Date().toISOString(),
     created_at: "2026-09-01T08:00:00Z",
@@ -52,29 +56,10 @@ export const INITIAL_USERS: UserProfile[] = [
     commune_affectation: "Ratoma",
     role: "ENQUETEUR",
     status: "APPROVED",
+    password_hash: "pbkdf2:sha256:100000$d4e5f60718293a4b5c6d7e8f00a1b2c3$85f18fff54516956949152fe0d16a0ff0b82f0ab3d0b47be51573c6f168729d0",
     approved_by: "admin-1",
     approved_at: "2026-09-10T10:00:00Z",
     created_at: "2026-09-10T09:00:00Z",
-  },
-  {
-    id: "enq-2",
-    email: "fanta.conde@labal-guinee.org",
-    full_name: "Fanta Condé",
-    phone: "+224 624 44 55 66",
-    commune_affectation: "Kaloum",
-    role: "ENQUETEUR",
-    status: "PENDING",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "enq-3",
-    email: "sekou.toure@labal-guinee.org",
-    full_name: "Sékou Touré",
-    phone: "+224 626 99 88 77",
-    commune_affectation: "Matoto",
-    role: "ENQUETEUR",
-    status: "PENDING",
-    created_at: new Date().toISOString(),
   },
 ];
 
@@ -86,7 +71,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     action: "USER_APPROVED",
     target_id: "enq-1",
     target_name: "Amara Diallo",
-    details: "Approbation initiale pour la zone Ratoma",
+    details: "Approbation du compte Enquêteur pour la zone Ratoma",
     timestamp: "2026-09-10T10:00:00Z",
   },
 ];
@@ -95,19 +80,18 @@ interface AuthContextType {
   currentUser: UserProfile | null;
   users: UserProfile[];
   auditLogs: AuditLog[];
-  login: (email: string) => boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
-  registerUser: (data: Omit<UserProfile, "id" | "role" | "status" | "created_at">) => UserProfile;
+  registerUser: (data: Omit<UserProfile, "id" | "role" | "status" | "created_at">, plainPassword: string) => Promise<UserProfile>;
   approveUser: (userId: string) => void;
   rejectUser: (userId: string) => void;
-  setCurrentUserDirect: (user: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_USER_KEY = "labal_auth_user_v1";
-const AUTH_USERS_LIST_KEY = "labal_auth_users_v1";
-const AUTH_AUDIT_LOGS_KEY = "labal_auth_audit_v1";
+const AUTH_USER_KEY = "labal_auth_user_v2";
+const AUTH_USERS_LIST_KEY = "labal_auth_users_v2";
+const AUTH_AUDIT_LOGS_KEY = "labal_auth_audit_v2";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -158,14 +142,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = (email: string): boolean => {
-    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (found) {
-      setCurrentUser(found);
-      saveState(found, users, auditLogs);
-      return true;
+  /**
+   * Authentification sécurisée par Email et Mot de passe Haché (PBKDF2/SHA-256)
+   */
+  const login = async (email: string, plainPassword: string): Promise<{ success: boolean; message?: string }> => {
+    const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    if (!found) {
+      return { success: false, message: "Adresse email inconnue." };
     }
-    return false;
+
+    if (!found.password_hash) {
+      return { success: false, message: "Erreur d'authentification : mot de passe non configuré." };
+    }
+
+    // Vérification cryptographique Timing-Safe du Hash PBKDF2
+    const isPasswordValid = await verifyPassword(plainPassword, found.password_hash);
+    if (!isPasswordValid) {
+      return { success: false, message: "Mot de passe incorrect." };
+    }
+
+    setCurrentUser(found);
+    saveState(found, users, auditLogs);
+    return { success: true };
   };
 
   const logout = () => {
@@ -173,17 +171,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(AUTH_USER_KEY);
   };
 
-  const setCurrentUserDirect = (user: UserProfile) => {
-    setCurrentUser(user);
-    saveState(user, users, auditLogs);
-  };
+  /**
+   * Inscription Enquêteur avec hachage sécurisé du mot de passe
+   */
+  const registerUser = async (
+    data: Omit<UserProfile, "id" | "role" | "status" | "created_at">,
+    plainPassword: string
+  ): Promise<UserProfile> => {
+    const hashed = await hashPassword(plainPassword);
 
-  const registerUser = (data: Omit<UserProfile, "id" | "role" | "status" | "created_at">): UserProfile => {
     const newUser: UserProfile = {
       ...data,
       id: `user-${Date.now()}`,
       role: "ENQUETEUR",
       status: "PENDING",
+      password_hash: hashed,
       created_at: new Date().toISOString(),
     };
 
@@ -285,7 +287,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerUser,
         approveUser,
         rejectUser,
-        setCurrentUserDirect,
       }}
     >
       {children}

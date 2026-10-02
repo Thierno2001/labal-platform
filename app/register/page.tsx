@@ -19,19 +19,22 @@ export default function RegisterPage() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.full_name || !formData.email || !formData.phone) {
+    if (!formData.full_name || !formData.email || !formData.phone || !formData.password) {
       alert("Veuillez remplir tous les champs obligatoires.");
       return;
     }
 
-    registerUser({
-      full_name: formData.full_name,
-      email: formData.email,
-      phone: formData.phone,
-      commune_affectation: formData.commune_affectation,
-    });
+    await registerUser(
+      {
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+        commune_affectation: formData.commune_affectation,
+      },
+      formData.password
+    );
 
     setSubmitted(true);
   };

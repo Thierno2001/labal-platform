@@ -9,6 +9,7 @@ export interface UserProfile {
   commune_affectation: string;
   role: UserRole;
   status: UserStatus;
+  password_hash?: string; // Stockage PBKDF2:SHA256 avec Salt individuel
   approved_by?: string | null;
   approved_at?: string | null;
   created_at: string;
