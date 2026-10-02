@@ -10,15 +10,16 @@ import {
   Menu,
   X,
   Truck,
-  Home,
+  Home as HomeIcon,
   Building2,
   Recycle,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "Accueil", icon: Home },
+  { href: "/", label: "Accueil", icon: HomeIcon },
   { href: "/enquete/pme", label: "PME Collecte", icon: Truck },
-  { href: "/enquete/menages", label: "Ménages", icon: Home },
+  { href: "/enquete/menages", label: "Ménages", icon: HomeIcon },
   { href: "/enquete/transit", label: "Zones Transit", icon: Recycle },
   { href: "/enquete/autorites", label: "Autorités", icon: Building2 },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,32 +30,38 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-labal-gray-medium">
+    <header className="sticky top-0 z-50 glass-panel border-b border-labal-deep/10 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden shadow-sm border border-labal-deep/10 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
               <Image
                 src="/logo-labal.jpeg"
                 alt="Lâbal"
                 fill
                 className="object-cover"
                 priority
+                sizes="44px"
               />
             </div>
-            <div className="hidden sm:block">
-              <span className="text-xl font-bold text-labal-deep tracking-tight">
-                Lâbal
-              </span>
-              <span className="block text-[0.65rem] text-labal-gray-dark -mt-1 tracking-wide">
-                Assainissement Urbain
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl sm:text-2xl font-black text-labal-deep tracking-tight">
+                  Lâbal
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-labal-lime/15 text-labal-deep border border-labal-lime/30">
+                  Guinée
+                </span>
+              </div>
+              <span className="block text-[0.7rem] font-semibold text-labal-gray-dark -mt-0.5 tracking-wide">
+                Assainissement Urbain Conakry
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1.5 p-1.5 bg-labal-gray-light/80 rounded-xl border border-labal-deep/5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
@@ -62,13 +69,13 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
                     isActive
-                      ? "bg-labal-lime/10 text-labal-lime border border-labal-lime/20"
-                      : "text-labal-deep hover:bg-labal-gray-light hover:text-labal-lime"
+                      ? "bg-white text-labal-deep shadow-sm border border-labal-deep/10 font-bold"
+                      : "text-labal-gray-dark hover:text-labal-deep hover:bg-white/60"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-labal-lime" : "text-labal-gray-dark"}`} />
                   {item.label}
                 </Link>
               );
@@ -76,20 +83,20 @@ export function Header() {
           </nav>
 
           {/* Survey Button (desktop) */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:flex items-center gap-3">
             <Link
               href="/enquete/pme"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-labal-lime text-white font-semibold rounded-lg hover:bg-labal-lime/90 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-labal-deep to-labal-deep/90 text-white font-bold rounded-xl hover:from-labal-deep/95 hover:to-labal-deep shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs sm:text-sm border border-labal-lime/30"
             >
-              <ClipboardList className="w-4 h-4" />
-              Nouvelle enquête
+              <ClipboardList className="w-4 h-4 text-labal-lime" />
+              Lancer une enquête
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg text-labal-deep hover:bg-labal-gray-light transition-colors"
+            className="lg:hidden p-2.5 rounded-xl text-labal-deep hover:bg-labal-gray-light border border-labal-deep/10 transition-colors touch-target flex items-center justify-center"
             aria-label="Menu"
           >
             {mobileMenuOpen ? (
@@ -101,30 +108,38 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-labal-gray-medium bg-white animate-fade-in-up">
-          <nav className="px-4 py-3 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-labal-lime/10 text-labal-lime"
-                      : "text-labal-deep hover:bg-labal-gray-light"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+        <div className="lg:hidden bg-white/98 backdrop-blur-md border-b border-labal-deep/10 px-4 pt-3 pb-6 space-y-2 animate-slide-up">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all touch-target ${
+                  isActive
+                    ? "bg-labal-lime/15 text-labal-deep border border-labal-lime/30 font-bold"
+                    : "text-labal-deep hover:bg-labal-gray-light"
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? "text-labal-lime" : "text-labal-gray-dark"}`} />
+                {item.label}
+              </Link>
+            );
+          })}
+          <div className="pt-2">
+            <Link
+              href="/enquete/pme"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 w-full py-3.5 bg-labal-deep text-white font-bold rounded-xl text-sm shadow-md"
+            >
+              <Sparkles className="w-4 h-4 text-labal-lime" />
+              Lancer une nouvelle enquête
+            </Link>
+          </div>
         </div>
       )}
     </header>
