@@ -15,7 +15,8 @@ import {
   MapPin,
   LogIn,
   UserPlus,
-  Lock,
+  BarChart3,
+  FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -113,7 +114,7 @@ export default function HomePage() {
                     className="inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-labal-deep text-white font-black rounded-2xl hover:bg-labal-deep/90 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm border border-labal-lime/30 group"
                   >
                     <LogIn className="w-5 h-5 text-labal-lime group-hover:scale-110 transition-transform" />
-                    Se Connecter à la Plateforme
+                    Se Connecter
                   </Link>
 
                   <Link
@@ -194,38 +195,74 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION FOR UNAUTHENTICATED VISITORS: LOGIN PROMPT */}
+      {/* PUBLIC PRESENTATION SECTION FOR VISITORS */}
       {!isLoggedIn && (
         <section className="py-16 bg-white px-4 sm:px-6 lg:px-8 border-t border-labal-deep/5">
-          <div className="max-w-3xl mx-auto bg-labal-gray-light p-8 sm:p-12 rounded-3xl border border-labal-deep/10 shadow-lg text-center space-y-6">
-            <div className="w-16 h-16 rounded-2xl bg-labal-deep text-white flex items-center justify-center mx-auto border border-labal-lime/30 shadow-md">
-              <Lock className="w-8 h-8 text-labal-lime" />
+          <div className="max-w-7xl mx-auto space-y-12">
+            <div className="text-center space-y-3 max-w-2xl mx-auto">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-labal-gray-light text-labal-deep text-xs font-bold border border-labal-deep/10">
+                <Sparkles className="w-3.5 h-3.5 text-labal-lime" />
+                Le Projet Labal
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-black text-labal-deep tracking-tight">
+                Numérisation & Structuration de la Filère Déchets
+              </h2>
+              <p className="text-xs sm:text-sm text-labal-gray-dark font-medium">
+                Une initiative moderne pour moderniser l&apos;assainissement dans les communes de la capitale.
+              </p>
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black border border-amber-300">
-              <ShieldCheck className="w-4 h-4 text-amber-700" />
-              Accès Sécurisé Réservé
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="bg-labal-gray-light p-8 rounded-3xl border border-labal-deep/10 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-labal-deep text-white flex items-center justify-center font-bold">
+                  <ClipboardList className="w-6 h-6 text-labal-lime" />
+                </div>
+                <h3 className="text-lg font-black text-labal-deep">Collecte Terrain Dynamique</h3>
+                <p className="text-xs text-labal-gray-dark leading-relaxed font-medium">
+                  Saisie sur smartphone avec synchronisation hors-ligne pour la cartographie des acteurs locaux.
+                </p>
+              </div>
+
+              <div className="bg-labal-gray-light p-8 rounded-3xl border border-labal-deep/10 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-labal-deep text-white flex items-center justify-center font-bold">
+                  <BarChart3 className="w-6 h-6 text-labal-lime" />
+                </div>
+                <h3 className="text-lg font-black text-labal-deep">Analyse & Consolidation</h3>
+                <p className="text-xs text-labal-gray-dark leading-relaxed font-medium">
+                  Agrégation des métriques d&apos;assainissement, du taux d&apos;adhésion et des modes de paiement.
+                </p>
+              </div>
+
+              <div className="bg-labal-gray-light p-8 rounded-3xl border border-labal-deep/10 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-labal-deep text-white flex items-center justify-center font-bold">
+                  <FileCheck className="w-6 h-6 text-labal-lime" />
+                </div>
+                <h3 className="text-lg font-black text-labal-deep">Rapports Décisionnels</h3>
+                <p className="text-xs text-labal-gray-dark leading-relaxed font-medium">
+                  Génération automatisée de bilans et de présentations au format officiel PDF et PowerPoint.
+                </p>
+              </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-labal-deep tracking-tight">
-              Espace Restreint aux Enquêteurs & Administrateurs
-            </h2>
-            <p className="text-xs sm:text-sm text-labal-gray-dark font-medium max-w-xl mx-auto leading-relaxed">
-              Pour accéder aux formulaires de collecte sur le terrain ou au système d&apos;analyse, vous devez préalablement vous identifier avec votre compte utilisateur.
-            </p>
-            <div className="pt-2 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/login"
-                className="px-8 py-3.5 bg-labal-deep text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:bg-labal-deep/90 transition-all flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-4 h-4 text-labal-lime" />
-                Se Connecter
-              </Link>
-              <Link
-                href="/register"
-                className="px-8 py-3.5 bg-white text-labal-deep font-bold text-xs sm:text-sm rounded-xl border border-labal-deep/15 hover:bg-labal-gray-light transition-all flex items-center justify-center gap-2"
-              >
-                <UserPlus className="w-4 h-4 text-labal-deep" />
-                Créer un Compte Enquêteur
-              </Link>
+
+            <div className="bg-labal-deep p-8 sm:p-12 rounded-3xl text-white text-center space-y-6 shadow-xl border border-labal-lime/30">
+              <h3 className="text-2xl sm:text-3xl font-black">Accéder à la Plateforme</h3>
+              <p className="text-xs sm:text-sm text-white/80 max-w-lg mx-auto font-medium">
+                Connectez-vous avec votre compte utilisateur ou demandez un accès d&apos;enquêteur.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  href="/login"
+                  className="px-8 py-3.5 bg-labal-lime text-labal-deep font-black rounded-xl hover:bg-labal-lime/90 transition-all text-xs"
+                >
+                  Se Connecter
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-8 py-3.5 bg-white/10 text-white font-bold rounded-xl border border-white/20 hover:bg-white/20 transition-all text-xs"
+                >
+                  S&apos;inscrire comme Enquêteur
+                </Link>
+              </div>
             </div>
           </div>
         </section>
