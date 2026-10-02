@@ -35,7 +35,6 @@ export function Header() {
   // Strict RBAC Navigation Items:
   // Survey links are shown ONLY when user is logged in & approved!
   const navItems = [
-    { href: "/", label: "Accueil", icon: HomeIcon, show: true },
     { href: "/enquete/pme", label: "PME Collecte", icon: Truck, show: isLoggedIn && isUserApproved },
     { href: "/enquete/menages", label: "Ménages", icon: HomeIcon, show: isLoggedIn && isUserApproved },
     { href: "/enquete/transit", label: "Zones Transit", icon: Recycle, show: isLoggedIn && isUserApproved },
