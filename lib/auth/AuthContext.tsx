@@ -137,9 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (savedUser) {
         setCurrentUser(JSON.parse(savedUser));
       } else {
-        // Default session for smooth demo: Admin 1
-        setCurrentUser(INITIAL_ADMINS[0]);
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(INITIAL_ADMINS[0]));
+        setCurrentUser(null);
       }
     } catch (e) {
       console.error("[Auth] Failed to load local storage session", e);

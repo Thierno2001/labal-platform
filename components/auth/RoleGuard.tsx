@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth/AuthContext";
 import { UserRole } from "@/lib/auth/types";
 import Link from "next/link";
-import { ShieldAlert, UserCheck, Clock, ArrowLeft, Lock } from "lucide-react";
+import { ShieldAlert, Clock, ArrowLeft, Lock, LogIn } from "lucide-react";
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -18,27 +18,32 @@ export function RoleGuard({
 }: RoleGuardProps) {
   const { currentUser } = useAuth();
 
+  // 1. NOT LOGGED IN
   if (!currentUser) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl border border-labal-deep/10 shadow-lg max-w-md text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-            <Lock className="w-8 h-8" />
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <div className="bg-white p-8 sm:p-10 rounded-3xl border border-labal-deep/15 shadow-2xl max-w-md w-full text-center space-y-5 animate-slide-up">
+          <div className="w-16 h-16 rounded-2xl bg-labal-deep text-white flex items-center justify-center mx-auto border border-labal-lime/30 shadow-md">
+            <Lock className="w-8 h-8 text-labal-lime" />
           </div>
-          <h2 className="text-xl font-black text-labal-deep">Connexion Requise</h2>
-          <p className="text-xs text-labal-gray-dark font-medium">
-            Veuillez vous connecter avec votre compte pour accéder à cet espace de la plateforme.
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-labal-lime/15 text-labal-deep text-xs font-black border border-labal-lime/30">
+            Connexion Obligatoire
+          </div>
+          <h2 className="text-2xl font-black text-labal-deep tracking-tight">Accès Sécurisé Labal</h2>
+          <p className="text-xs sm:text-sm text-labal-gray-dark font-medium leading-relaxed">
+            Vous devez vous identifier avec votre compte administrateur ou enquêteur pour accéder aux services de la plateforme.
           </p>
-          <div className="pt-2 flex flex-col gap-2">
+          <div className="pt-2 flex flex-col gap-3">
             <Link
               href="/login"
-              className="w-full py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-sm hover:bg-labal-deep/90 transition-all"
+              className="w-full py-3.5 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-md hover:bg-labal-deep/90 transition-all flex items-center justify-center gap-2"
             >
-              Se Connecter
+              <LogIn className="w-4 h-4 text-labal-lime" />
+              Se Connecter avec mon Compte
             </Link>
             <Link
               href="/register"
-              className="w-full py-3 bg-labal-gray-light text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/10 hover:bg-white transition-all"
+              className="w-full py-3 bg-labal-gray-light text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/10 hover:bg-white transition-all text-center"
             >
               Créer un Compte Enquêteur
             </Link>
@@ -48,97 +53,76 @@ export function RoleGuard({
     );
   }
 
-  // Check Approval Status
+  // 2. ACCOUNT PENDING APPROVAL
   if (requireApproved && currentUser.status === "PENDING") {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl border border-amber-200 shadow-xl max-w-lg text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto border border-amber-300 animate-pulse">
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <div className="bg-white p-8 sm:p-10 rounded-3xl border border-amber-200 shadow-2xl max-w-lg w-full text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto border border-amber-300 animate-pulse">
             <Clock className="w-8 h-8" />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
-            Compte en attente de validation
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
+            ⏳ Statut : En attente de validation
           </div>
           <h2 className="text-2xl font-black text-labal-deep tracking-tight">
             Validation Administrateur Requise
           </h2>
           <p className="text-xs sm:text-sm text-labal-gray-dark font-medium leading-relaxed">
-            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong> ! Votre compte d&apos;enquêteur pour la zone <strong className="text-labal-deep">{currentUser.commune_affectation}</strong> a été créé.
+            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong>. Votre demande d&apos;inscription pour la zone <strong className="text-labal-deep">{currentUser.commune_affectation}</strong> est en cours d&apos;examen.
           </p>
-          <div className="bg-labal-gray-light/60 p-4 rounded-2xl text-left border border-labal-deep/5 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-labal-deep">
-              <UserCheck className="w-4 h-4 text-labal-lime" />
-              Procédure de validation de sécurité :
-            </div>
-            <ul className="text-[0.75rem] text-labal-gray-dark space-y-1 list-disc pl-5">
-              <li>Un administrateur Labal doit approuver votre identité.</li>
-              <li>Aucune donnée ne peut être saisie tant que le compte n&apos;est pas validé.</li>
-              <li>Consultez l&apos;administration pour débloquer votre accès.</li>
-            </ul>
+          <div className="bg-amber-50/70 p-4 rounded-2xl text-left border border-amber-200 text-xs text-amber-900 space-y-1">
+            <p className="font-bold">Politique de Sécurité Zero-Trust :</p>
+            <p>Seuls les enquêteurs approuvés par l&apos;administration peuvent enregistrer des données sur le terrain.</p>
           </div>
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center gap-2 w-full py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all"
-            >
-              <ArrowLeft className="w-4 h-4 text-labal-lime" />
-              Retourner à l&apos;Accueil
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (requireApproved && currentUser.status === "REJECTED") {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl border border-red-200 shadow-xl max-w-lg text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto border border-red-300">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-black text-red-700">Demande Inscription Refusée</h2>
-          <p className="text-xs text-labal-gray-dark">
-            Votre demande d&apos;inscription a été rejetée par l&apos;administration. Contactez le responsable d&apos;enquête.
-          </p>
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-labal-deep text-white font-bold text-xs rounded-xl"
+            className="inline-flex items-center justify-center gap-2 w-full py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs"
           >
-            <ArrowLeft className="w-4 h-4 text-labal-lime" /> Retour à l&apos;Accueil
+            <ArrowLeft className="w-4 h-4 text-labal-lime" />
+            Retourner à l&apos;Accueil
           </Link>
         </div>
       </div>
     );
   }
 
-  // Check Role Allowed
+  // 3. STRICT 403 FORBIDDEN ERROR PAGE FOR ENQUÊTEURS ACCESSING DASHBOARD/ADMIN
   if (!allowedRoles.includes(currentUser.role)) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl border border-labal-deep/10 shadow-xl max-w-lg text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-labal-lime/20 text-labal-deep flex items-center justify-center mx-auto border border-labal-lime/40">
-            <ShieldAlert className="w-8 h-8 text-labal-deep" />
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <div className="bg-white p-8 sm:p-10 rounded-3xl border border-red-200 shadow-2xl max-w-lg w-full text-center space-y-5 animate-slide-up">
+          <div className="w-16 h-16 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto border border-red-200">
+            <ShieldAlert className="w-8 h-8" />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200">
-            Accès Réservé aux Administrateurs
+
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-black border border-red-200 uppercase tracking-wide">
+            🚫 ERREUR 403 — ACCÈS REFUSÉ
           </div>
-          <h2 className="text-2xl font-black text-labal-deep">Permissions Insuffisantes</h2>
+
+          <h2 className="text-2xl font-black text-labal-deep tracking-tight">
+            Droits d&apos;accès Insuffisants
+          </h2>
+
           <p className="text-xs sm:text-sm text-labal-gray-dark leading-relaxed">
-            Vous êtes connecté avec un profil <strong className="text-labal-deep">Enquêteur Terrain</strong>. Cette section (Tableau de Bord & Exports) est exclusivement réservée à l&apos;Administrateur et aux Superviseurs.
+            Vous êtes connecté en tant qu&apos;<strong className="text-labal-deep">Enquêteur Terrain ({currentUser.full_name})</strong>. En accord avec la politique de confidentialité, le Tableau de Bord décisionnel et la gestion des utilisateurs sont strictly réservés aux <strong className="text-labal-deep">Administrateurs</strong>.
           </p>
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+
+          <div className="p-4 bg-labal-gray-light rounded-2xl text-xs text-labal-deep border border-labal-deep/10 font-bold">
+            Votre profil a accès uniquement à la collecte des enquêtes terrain (PME, Ménages, Transit, Mairies).
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/enquete/pme"
-              className="w-full sm:w-auto px-5 py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all"
+              className="px-6 py-3.5 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all text-center"
             >
-              Accéder à la Collecte PME
+              Accéder aux Formulaires d&apos;Enquête
             </Link>
             <Link
               href="/"
-              className="w-full sm:w-auto px-5 py-3 bg-labal-gray-light text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/10 hover:bg-white transition-all"
+              className="px-6 py-3.5 bg-labal-gray-light text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/10 hover:bg-white transition-all text-center"
             >
-              Page d&apos;Accueil
+              Retour à l&apos;Accueil
             </Link>
           </div>
         </div>
