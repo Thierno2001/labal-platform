@@ -3,14 +3,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { UserProfile, AuditLog, UserStatus } from "./types";
 import { hashPassword, verifyPassword } from "./password";
-
 import { INITIAL_ADMINS, INITIAL_USERS, INITIAL_AUDIT_LOGS } from "./initialData";
+
 export { INITIAL_ADMINS, INITIAL_USERS, INITIAL_AUDIT_LOGS };
 
 interface AuthContextType {
   currentUser: UserProfile | null;
   users: UserProfile[];
   auditLogs: AuditLog[];
+  dbSource: "supabase" | "server_memory";
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   registerUser: (data: Omit<UserProfile, "id" | "role" | "status" | "created_at">, plainPassword: string) => Promise<UserProfile>;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [dbSource, setDbSource] = useState<"supabase" | "server_memory">("server_memory");
   const [mounted, setMounted] = useState(false);
 
   // Synchronisation centralisée avec le serveur
@@ -35,8 +37,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/users", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
+        if (data.source) {
+          setDbSource(data.source);
+        }
         if (data.users && Array.isArray(data.users)) {
-          // Fusionner avec la liste initiale pour garantir que les 3 admins existent toujours
           const mergedMap = new Map<string, UserProfile>();
           INITIAL_USERS.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
           data.users.forEach((u: UserProfile) => mergedMap.set(u.email.toLowerCase(), u));
@@ -44,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const finalUsers = Array.from(mergedMap.values());
           setUsers(finalUsers);
 
-          // Si l'utilisateur actuel est connecté, mettre à jour son statut s'il a changé
           if (currentUser) {
             const freshCurrent = finalUsers.find((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
             if (freshCurrent && freshCurrent.status !== currentUser.status) {
@@ -73,11 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("[Auth] Failed to load local storage session", e);
     }
     
-    // Premier chargement & Polling automatique toutes les 5 secondes pour synchroniser tous les appareils
     refreshUsers();
     const interval = setInterval(() => {
       refreshUsers();
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, []);
@@ -86,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Authentification sécurisée
    */
   const login = async (email: string, plainPassword: string): Promise<{ success: boolean; message?: string }> => {
-    // S'assurer d'avoir la liste à jour
     await refreshUsers();
     
     const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
@@ -114,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Inscription Enquêteur (Envoyée au serveur centralisé)
+   * Inscription Enquêteur
    */
   const registerUser = async (
     data: Omit<UserProfile, "id" | "role" | "status" | "created_at">,
@@ -144,7 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("[AuthContext] Failed to post new user to server:", err);
     }
 
-    // Mise à jour locale immédiate
     setUsers((prev) => [newUser, ...prev]);
     setCurrentUser(newUser);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Approbation d'un utilisateur par un Admin (Envoyée au serveur centralisé)
+   * Approbation d'un utilisateur
    */
   const approveUser = async (userId: string) => {
     try {
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Rejet d'un utilisateur par un Admin (Envoyé au serveur centralisé)
+   * Rejet d'un utilisateur
    */
   const rejectUser = async (userId: string) => {
     try {
@@ -204,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         users,
         auditLogs,
+        dbSource,
         login,
         logout,
         registerUser,

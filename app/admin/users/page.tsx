@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Search,
-  Filter,
+  Database,
+  Server,
   RefreshCw,
 } from "lucide-react";
 
@@ -26,14 +27,14 @@ export default function AdminUsersPage() {
 }
 
 function AdminUsersContent() {
-  const { currentUser, users, auditLogs, approveUser, rejectUser } = useAuth();
+  const { currentUser, users, auditLogs, dbSource, approveUser, rejectUser, refreshUsers } = useAuth();
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "audit">("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const pendingUsers = users.filter((u) => u.status === "PENDING");
   const approvedUsers = users.filter((u) => u.status === "APPROVED");
-  const adminUsers = users.filter((u) => u.role === "ADMIN");
 
   const filteredPending = pendingUsers.filter(
     (u) =>
@@ -49,14 +50,20 @@ function AdminUsersContent() {
       u.commune_affectation.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleApprove = (userId: string, name: string) => {
-    approveUser(userId);
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshUsers();
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
+  const handleApprove = async (userId: string, name: string) => {
+    await approveUser(userId);
     setSuccessNotice(`Le compte de ${name} a été approuvé avec succès.`);
     setTimeout(() => setSuccessNotice(null), 4000);
   };
 
-  const handleReject = (userId: string, name: string) => {
-    rejectUser(userId);
+  const handleReject = async (userId: string, name: string) => {
+    await rejectUser(userId);
     setSuccessNotice(`La demande de ${name} a été rejetée.`);
     setTimeout(() => setSuccessNotice(null), 4000);
   };
@@ -84,14 +91,54 @@ function AdminUsersContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-            <div>
-              <p className="font-bold text-amber-900">{pendingUsers.length} Demande(s) en attente</p>
-              <p className="text-[0.65rem] text-amber-700">3 Administrateurs Actifs</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleManualRefresh}
+              className="p-3 bg-labal-gray-light hover:bg-labal-gray-medium rounded-2xl border border-labal-deep/10 text-labal-deep transition-all"
+              title="Rafraîchir les données"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-labal-lime" : ""}`} />
+            </button>
+
+            <div className="flex items-center gap-2 bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <div>
+                <p className="font-bold text-amber-900">{pendingUsers.length} Demande(s) en attente</p>
+                <p className="text-[0.65rem] text-amber-700">3 Administrateurs Actifs</p>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Database Connection Source Status Banner */}
+        {dbSource === "supabase" ? (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-bold rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Database className="w-4 h-4 text-emerald-600" />
+              <span>
+                Base de données Supabase Cloud : <strong className="text-emerald-700">Connectée & Synchro en Direct</strong>
+              </span>
+            </div>
+            <span className="text-[0.65rem] bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-full">
+              PostgreSQL Live
+            </span>
+          </div>
+        ) : (
+          <div className="p-4 bg-amber-50 border border-amber-300 text-amber-950 text-xs rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span>Supabase non configuré dans les variables d&apos;environnement Vercel !</span>
+              </div>
+              <span className="text-[0.65rem] bg-amber-200 text-amber-900 font-bold px-2.5 py-0.5 rounded-full">
+                Mémoire Temporaire Vercel
+              </span>
+            </div>
+            <p className="text-[0.7rem] text-amber-800 leading-relaxed">
+              Pour que les demandes enregistrées depuis les téléphones soient conservées définitivement dans votre base de données Supabase, ajoutez <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-950">NEXT_PUBLIC_SUPABASE_URL</code> et <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-950">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> dans le tableau de bord Vercel (<em>Settings ➔ Environment Variables</em>).
+            </p>
+          </div>
+        )}
 
         {/* Success Alert */}
         {successNotice && (
