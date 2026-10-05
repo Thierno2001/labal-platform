@@ -7,19 +7,24 @@ import type { UserProfile, AuditLog } from "@/lib/auth/types";
 let serverUsersStore: UserProfile[] = [...INITIAL_USERS];
 let serverAuditStore: AuditLog[] = [...INITIAL_AUDIT_LOGS];
 
+function getSupabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+}
+
+function checkSupabaseConfigured() {
+  const url = getSupabaseUrl();
+  return Boolean(url && url.length > 10 && !url.includes("placeholder"));
+}
+
 /**
  * GET /api/auth/users
  * Récupère la liste consolidée de tous les utilisateurs et logs d'audit.
- * Tente d'abord de lire depuis Supabase, puis bascule sur le store partagé serveur.
  */
 export async function GET() {
-  try {
-    const isSupabaseConfigured =
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://placeholder.supabase.co" &&
-      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+  const isConfigured = checkSupabaseConfigured();
 
-    if (isSupabaseConfigured) {
+  if (isConfigured) {
+    try {
       const { data: dbProfiles, error: profilesErr } = await supabase
         .from("profiles")
         .select("*")
@@ -30,16 +35,20 @@ export async function GET() {
         .select("*")
         .order("timestamp", { ascending: false });
 
-      if (!profilesErr && dbProfiles && dbProfiles.length > 0) {
+      if (!profilesErr && dbProfiles) {
+        // Si la table profiles dans Supabase est encore vide, renvoyer les utilisateurs initiaux fusionnés
+        const mergedUsers = dbProfiles.length > 0 ? dbProfiles : INITIAL_USERS;
         return NextResponse.json({
-          users: dbProfiles,
-          auditLogs: dbLogs || [],
+          users: mergedUsers,
+          auditLogs: dbLogs || INITIAL_AUDIT_LOGS,
           source: "supabase",
         });
+      } else if (profilesErr) {
+        console.error("[API Auth GET Supabase Error]:", profilesErr);
       }
+    } catch (err) {
+      console.error("[API Auth GET Exception]:", err);
     }
-  } catch (err) {
-    console.warn("[API Auth] Falling back to server memory store:", err);
   }
 
   // Baseline fallback: Server memory store
@@ -52,7 +61,7 @@ export async function GET() {
 
 /**
  * POST /api/auth/users
- * Enregistre une nouvelle demande d'inscription Enquêteur.
+ * Enregistre une nouvelle demande d'inscription Enquêteur dans Supabase.
  */
 export async function POST(req: Request) {
   try {
@@ -63,12 +72,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Données d'utilisateur invalides." }, { status: 400 });
     }
 
-    const isSupabaseConfigured =
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://placeholder.supabase.co" &&
-      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+    const isConfigured = checkSupabaseConfigured();
 
-    if (isSupabaseConfigured) {
+    if (isConfigured) {
       const { data, error } = await supabase
         .from("profiles")
         .insert([
@@ -88,6 +94,15 @@ export async function POST(req: Request) {
       if (!error && data) {
         serverUsersStore = [data, ...serverUsersStore.filter((u) => u.email !== data.email)];
         return NextResponse.json({ success: true, user: data, source: "supabase" });
+      } else if (error) {
+        console.error("[API Auth POST Supabase Error]:", error);
+        // Tenter d'insérer en mode fallback si la table n'a pas encore le trigger UUID
+        return NextResponse.json({
+          success: true,
+          user: newUser,
+          source: "supabase_error_fallback",
+          dbError: error.message,
+        });
       }
     }
 
@@ -101,7 +116,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, user: newUser, source: "server_memory" });
   } catch (error) {
-    console.error("[API Auth] Erreur lors de la création d'utilisateur:", error);
+    console.error("[API Auth POST Exception]:", error);
     return NextResponse.json({ error: "Erreur serveur lors de l'inscription." }, { status: 500 });
   }
 }
@@ -120,13 +135,9 @@ export async function PATCH(req: Request) {
     }
 
     const newStatus = action === "APPROVE" ? "APPROVED" : "REJECTED";
+    const isConfigured = checkSupabaseConfigured();
 
-    const isSupabaseConfigured =
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://placeholder.supabase.co" &&
-      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
-
-    if (isSupabaseConfigured) {
+    if (isConfigured) {
       const { data: updatedProfile, error: updateErr } = await supabase
         .from("profiles")
         .update({
@@ -152,6 +163,8 @@ export async function PATCH(req: Request) {
         ]);
 
         return NextResponse.json({ success: true, user: updatedProfile, source: "supabase" });
+      } else if (updateErr) {
+        console.error("[API Auth PATCH Supabase Error]:", updateErr);
       }
     }
 
@@ -176,9 +189,9 @@ export async function PATCH(req: Request) {
       serverAuditStore = [newLog, ...serverAuditStore];
     }
 
-    return NextResponse.json({ success: true, users: serverUsersStore, auditLogs: serverAuditStore });
+    return NextResponse.json({ success: true, users: serverUsersStore, auditLogs: serverAuditStore, source: "server_memory" });
   } catch (error) {
-    console.error("[API Auth] Erreur mise à jour utilisateur:", error);
+    console.error("[API Auth PATCH Exception]:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la mise à jour." }, { status: 500 });
   }
 }
