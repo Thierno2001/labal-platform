@@ -33,32 +33,63 @@ const booleanFields = new Set([
   "espace_transit_dedie", "interet_plateforme_labal", "pret_integrer_projet_pilote"
 ]);
 
-const integerFields = new Set([
+const numericFields = new Set([
   "annee_creation", "nb_commerces", "duree_tournee_heures", "voyages_par_jour",
   "nb_personnes_foyer", "nb_sacs_semaine", "montant_mensuel_gnf",
-  "nb_trieurs", "nb_pme_clientes", "nb_rotations_quotidiennes", "annee_prise_fonction"
+  "capacite_caissons", "nb_trieurs", "nb_pme_clientes", "nb_rotations_quotidiennes",
+  "redevance_deversement", "tarif_decharge",
+  "annee_prise_fonction", "budget_annuel_assainissement", "nb_pme_agreees", "nb_zst_fonctionnels"
 ]);
 
 function sanitizePayload(data: Record<string, any>) {
   const clean: Record<string, any> = {};
 
   for (const [key, val] of Object.entries(data)) {
-    if (val === "" || val === undefined) {
+    // 1. Handle null / undefined
+    if (val === null || val === undefined) {
       clean[key] = null;
-    } else if (booleanFields.has(key)) {
-      if (typeof val === "boolean") clean[key] = val;
-      else if (val === "true" || val === "Oui") clean[key] = true;
-      else if (val === "false" || val === "Non") clean[key] = false;
-      else clean[key] = Boolean(val);
-    } else if (integerFields.has(key)) {
-      if (typeof val === "number") clean[key] = Math.round(val);
-      else {
-        const parsed = parseInt(String(val), 10);
-        clean[key] = isNaN(parsed) ? null : parsed;
-      }
-    } else {
-      clean[key] = val;
+      continue;
     }
+
+    // 2. Handle strings (convert empty or whitespace strings to null)
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (trimmed === "") {
+        clean[key] = null;
+        continue;
+      }
+
+      if (booleanFields.has(key)) {
+        if (trimmed === "true" || trimmed === "Oui") clean[key] = true;
+        else if (trimmed === "false" || trimmed === "Non") clean[key] = false;
+        else clean[key] = Boolean(trimmed);
+        continue;
+      }
+
+      if (numericFields.has(key)) {
+        const parsed = Number(trimmed);
+        clean[key] = isNaN(parsed) ? null : parsed;
+        continue;
+      }
+
+      clean[key] = trimmed;
+      continue;
+    }
+
+    // 3. Handle numbers directly
+    if (typeof val === "number") {
+      clean[key] = isNaN(val) ? null : val;
+      continue;
+    }
+
+    // 4. Handle booleans directly
+    if (typeof val === "boolean") {
+      clean[key] = val;
+      continue;
+    }
+
+    // 5. Arrays / Objects (JSONB columns)
+    clean[key] = val;
   }
 
   return clean;
