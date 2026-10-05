@@ -210,18 +210,28 @@ function DashboardContent() {
   const handleExportPdf = async () => {
     setExporting("pdf");
     try {
-      window.open("/api/export/pdf", "_blank");
+      const a = document.createElement("a");
+      a.href = "/api/export/pdf";
+      a.download = `labal-rapport-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } finally {
-      setExporting(null);
+      setTimeout(() => setExporting(null), 1500);
     }
   };
 
   const handleExportPptx = async () => {
     setExporting("pptx");
     try {
-      window.location.href = "/api/export/pptx";
+      const a = document.createElement("a");
+      a.href = "/api/export/pptx";
+      a.download = `labal-presentation-${new Date().toISOString().slice(0, 10)}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } finally {
-      setTimeout(() => setExporting(null), 2000);
+      setTimeout(() => setExporting(null), 1500);
     }
   };
 

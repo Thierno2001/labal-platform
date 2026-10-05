@@ -1,3 +1,4 @@
+import { jsPDF } from "jspdf";
 import { COLORS } from "@/lib/constants";
 
 export interface PdfReportData {
@@ -16,391 +17,411 @@ export interface PdfReportData {
   dateGeneration: string;
 }
 
+// Color Palette RGB values
+const RGB = {
+  deep: [6, 68, 32] as [number, number, number],      // #064420
+  lime: [118, 192, 29] as [number, number, number],   // #76C01D
+  dark: [45, 55, 72] as [number, number, number],     // #2D3748
+  light: [248, 250, 249] as [number, number, number], // #F8FAF9
+  white: [255, 255, 255] as [number, number, number],
+  grayBorder: [226, 232, 240] as [number, number, number],
+};
+
 /**
- * Génère un rapport PDF sous forme de page HTML stylisée convertie en PDF.
- * Utilise les couleurs de la charte Labal : fond blanc, texte #064420, accents #76C01D.
+ * Génère un document PDF binaire natif (%PDF-1.4) de haute qualité
  */
-export function generatePdfHtml(data: PdfReportData): string {
-  const { deep, lime } = COLORS;
+export function generatePdfBuffer(data: PdfReportData): Buffer {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
 
-  return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Labal — Rapport d'Analyse Assainissement</title>
-  <style>
-    @page { size: A4; margin: 20mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      color: ${deep};
-      background: #FFFFFF;
-      line-height: 1.6;
-      font-size: 11pt;
-    }
-    .page { page-break-after: always; }
-    .page:last-child { page-break-after: auto; }
+  const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2; // 180mm
 
-    /* Header */
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 3px solid ${lime};
-    }
-    .header h1 {
-      font-size: 28pt;
-      color: ${deep};
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-    .header .subtitle {
-      font-size: 14pt;
-      color: ${lime};
-      margin-top: 5px;
-      font-weight: 600;
-    }
-    .header .date {
-      font-size: 10pt;
-      color: ${deep};
-      margin-top: 8px;
-      opacity: 0.7;
-    }
+  // =========================================================================
+  // PAGE 1: EN-TÊTE & KPIS & RÉPARTITION
+  // =========================================================================
 
-    /* Section titles */
-    h2 {
-      font-size: 16pt;
-      color: ${deep};
-      margin: 25px 0 15px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid ${lime};
-    }
+  // Top Accent Banner
+  doc.setFillColor(...RGB.deep);
+  doc.rect(0, 0, pageWidth, 12, "F");
+  doc.setFillColor(...RGB.lime);
+  doc.rect(0, 10, pageWidth, 2, "F");
 
-    /* KPI Grid */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin: 20px 0;
-    }
-    .kpi-box {
-      border: 1px solid ${deep};
-      border-radius: 8px;
-      padding: 15px;
-      text-align: center;
-      background: #FFFFFF;
-    }
-    .kpi-box .value {
-      font-size: 28pt;
-      font-weight: 800;
-      color: ${lime};
-      line-height: 1.1;
-    }
-    .kpi-box .label {
-      font-size: 9pt;
-      color: ${deep};
-      margin-top: 5px;
-      font-weight: 500;
-    }
+  // Title & Subtitle
+  doc.setTextColor(...RGB.deep);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("LABAL GUINÉE", margin, 26);
 
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-    }
-    th {
-      background: ${deep};
-      color: #FFFFFF;
-      font-size: 10pt;
-      font-weight: 600;
-      padding: 10px 12px;
-      text-align: left;
-    }
-    td {
-      padding: 8px 12px;
-      border-bottom: 1px solid #E5E7EB;
-      font-size: 10pt;
-      color: ${deep};
-    }
-    tr:nth-child(even) td {
-      background: #F8FAF9;
-    }
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...RGB.lime);
+  doc.text("Rapport d'Analyse — Enquête Assainissement Urbain Conakry", margin, 34);
 
-    /* Bar chart (CSS-based) */
-    .bar-chart {
-      margin: 20px 0;
-    }
-    .bar-row {
-      display: flex;
-      align-items: center;
-      margin: 8px 0;
-    }
-    .bar-label {
-      width: 80px;
-      font-size: 10pt;
-      font-weight: 500;
-      color: ${deep};
-      flex-shrink: 0;
-    }
-    .bar-container {
-      flex: 1;
-      height: 24px;
-      background: #F0F0F0;
-      border-radius: 4px;
-      overflow: hidden;
-      display: flex;
-    }
-    .bar-fill-deep {
-      background: ${deep};
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 8pt;
-      font-weight: 600;
-    }
-    .bar-fill-lime {
-      background: ${lime};
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 8pt;
-      font-weight: 600;
-    }
-    .bar-value {
-      width: 50px;
-      text-align: right;
-      font-size: 10pt;
-      font-weight: 600;
-      color: ${lime};
-      flex-shrink: 0;
-      margin-left: 8px;
-    }
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...RGB.dark);
+  doc.text(`Date de génération : ${data.dateGeneration}  |  Ville de Conakry (5 Communes)`, margin, 40);
 
-    /* Footer */
-    .footer {
-      margin-top: 40px;
-      padding-top: 15px;
-      border-top: 1px solid #E5E7EB;
-      text-align: center;
-      font-size: 8pt;
-      color: #6B7280;
-    }
+  // Line separator
+  doc.setDrawColor(...RGB.lime);
+  doc.setLineWidth(0.6);
+  doc.line(margin, 43, pageWidth - margin, 43);
 
-    /* Highlight box */
-    .highlight {
-      background: rgba(118, 192, 29, 0.08);
-      border-left: 4px solid ${lime};
-      padding: 12px 16px;
-      margin: 15px 0;
-      border-radius: 0 6px 6px 0;
-    }
-    .highlight strong {
-      color: ${lime};
-    }
-  </style>
-</head>
-<body>
+  // SECTION 1: INDICATEURS CLÉS (KPIS)
+  let yPos = 52;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(...RGB.deep);
+  doc.text("1. Indicateurs Clés de Performance (KPIs)", margin, yPos);
 
-  <!-- PAGE 1 : Couverture + KPIs -->
-  <div class="page">
-    <div class="header">
-      <h1>LÂBAL</h1>
-      <div class="subtitle">Rapport d'Analyse — Enquête Assainissement Urbain</div>
-      <div class="date">Conakry, Guinée — ${data.dateGeneration}</div>
-    </div>
+  yPos += 6;
+  const kpiBoxWidth = (contentWidth - 9) / 4;
+  const kpiBoxHeight = 24;
 
-    <h2>Indicateurs Clés de Performance</h2>
-    <div class="kpi-grid">
-      <div class="kpi-box">
-        <div class="value">${data.kpis.totalEnquetes}</div>
-        <div class="label">Total Enquêtes</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.tauxLabal}%</div>
-        <div class="label">Intérêt Labal</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.mobileMoney}%</div>
-        <div class="label">Mobile Money</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.saturationCritique}%</div>
-        <div class="label">Saturation Critique</div>
-      </div>
-    </div>
+  const kpisList = [
+    { label: "Total Enquêtes", value: `${data.kpis.totalEnquetes}` },
+    { label: "Intérêt Labal", value: `${data.kpis.tauxLabal}%` },
+    { label: "Mobile Money", value: `${data.kpis.mobileMoney}%` },
+    { label: "Saturation ZST", value: `${data.kpis.saturationCritique}%` },
+  ];
 
-    <h2>Répartition par Type d'Acteur</h2>
-    <div class="kpi-grid">
-      <div class="kpi-box">
-        <div class="value">${data.kpis.pme}</div>
-        <div class="label">🏭 PME de Collecte</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.menages}</div>
-        <div class="label">🏠 Ménages</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.transit}</div>
-        <div class="label">🔄 Zones Transit</div>
-      </div>
-      <div class="kpi-box">
-        <div class="value">${data.kpis.autorites}</div>
-        <div class="label">🏛️ Autorités</div>
-      </div>
-    </div>
+  kpisList.forEach((kpi, idx) => {
+    const x = margin + idx * (kpiBoxWidth + 3);
 
-    <div class="highlight">
-      <strong>${data.kpis.tauxLabal}%</strong> des acteurs interrogés se déclarent prêts à intégrer la plateforme numérique Labal pour améliorer la gestion des déchets à Conakry.
-    </div>
-  </div>
+    // Box Background
+    doc.setFillColor(...RGB.light);
+    doc.roundedRect(x, yPos, kpiBoxWidth, kpiBoxHeight, 2, 2, "F");
+    doc.setDrawColor(...RGB.lime);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(x, yPos, kpiBoxWidth, kpiBoxHeight, 2, 2, "S");
 
-  <!-- PAGE 2 : Ratio Paiement + Intérêt Labal -->
-  <div class="page">
-    <h2>Ratio Espèces vs Mobile Money par Commune</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Commune</th>
-          <th>Espèces (%)</th>
-          <th>Mobile Money (%)</th>
-          <th>Visualisation</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.ratioPaiement
-          .map(
-            (r) => `
-          <tr>
-            <td><strong>${r.commune}</strong></td>
-            <td>${r.especes}%</td>
-            <td style="color: ${lime}; font-weight: 700;">${r.mobileMoney}%</td>
-            <td>
-              <div class="bar-container">
-                <div class="bar-fill-deep" style="width: ${r.especes}%">${r.especes}%</div>
-                <div class="bar-fill-lime" style="width: ${r.mobileMoney}%">${r.mobileMoney}%</div>
-              </div>
-            </td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>
+    // Value
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...RGB.deep);
+    doc.text(kpi.value, x + kpiBoxWidth / 2, yPos + 11, { align: "center" });
 
-    <h2>Intérêt pour Labal par Type d'Acteur</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Acteur</th>
-          <th>Oui (%)</th>
-          <th>Peut-être (%)</th>
-          <th>Non (%)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.interetLabal
-          .map(
-            (i) => `
-          <tr>
-            <td><strong>${i.acteur}</strong></td>
-            <td style="color: ${lime}; font-weight: 700;">${i.oui}%</td>
-            <td>${i.peutEtre}%</td>
-            <td>${i.non}%</td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>
+    // Label
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB.dark);
+    doc.text(kpi.label, x + kpiBoxWidth / 2, yPos + 19, { align: "center" });
+  });
 
-    <div class="highlight">
-      La commune de <strong>Ratoma</strong> affiche le taux le plus élevé d'adoption du Mobile Money (${data.ratioPaiement.reduce((a, b) => (b.mobileMoney > a.mobileMoney ? b : a)).mobileMoney}%), suggérant un terrain favorable pour le déploiement prioritaire de la facturation numérique.
-    </div>
-  </div>
+  // SECTION 2: RÉPARTITION PAR TYPE D'ACTEUR
+  yPos += kpiBoxHeight + 14;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(...RGB.deep);
+  doc.text("2. Enquêtes Réalisées par Type d'Acteur", margin, yPos);
 
-  <!-- PAGE 3 : Conclusions -->
-  <div class="page">
-    <h2>Conclusions & Recommandations</h2>
+  yPos += 6;
+  const actorsList = [
+    { label: "PME de Collecte", count: data.kpis.pme },
+    { label: "Ménages & Usagers", count: data.kpis.menages },
+    { label: "Zones Transit (ZST/PA)", count: data.kpis.transit },
+    { label: "Autorités Locales", count: data.kpis.autorites },
+  ];
 
-    <div class="highlight">
-      <strong>Synthèse :</strong> L'enquête auprès de ${data.kpis.totalEnquetes} acteurs de l'assainissement à Conakry révèle un fort intérêt pour la digitalisation de la chaîne de gestion des déchets.
-    </div>
+  actorsList.forEach((act, idx) => {
+    const x = margin + idx * (kpiBoxWidth + 3);
 
-    <h2>Points Clés</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Indicateur</th>
-          <th>Valeur</th>
-          <th>Interprétation</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Taux d'adhésion Labal</td>
-          <td style="color: ${lime}; font-weight: 700;">${data.kpis.tauxLabal}%</td>
-          <td>Forte acceptation de la plateforme numérique</td>
-        </tr>
-        <tr>
-          <td>Adoption Mobile Money</td>
-          <td style="color: ${lime}; font-weight: 700;">${data.kpis.mobileMoney}%</td>
-          <td>Marge de progression significative</td>
-        </tr>
-        <tr>
-          <td>Saturation critique ZST</td>
-          <td style="color: ${lime}; font-weight: 700;">${data.kpis.saturationCritique}%</td>
-          <td>Nécessite une intervention urgente</td>
-        </tr>
-      </tbody>
-    </table>
+    doc.setFillColor(...RGB.white);
+    doc.roundedRect(x, yPos, kpiBoxWidth, kpiBoxHeight, 2, 2, "F");
+    doc.setDrawColor(...RGB.deep);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, yPos, kpiBoxWidth, kpiBoxHeight, 2, 2, "S");
 
-    <h2>Recommandations Prioritaires</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Action</th>
-          <th>Priorité</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>Déployer le paiement Mobile Money (Orange/MTN) en priorité</td>
-          <td style="color: ${lime}; font-weight: 700;">Haute</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Installer le système d'alerte saturation 80% dans les ZST</td>
-          <td style="color: ${lime}; font-weight: 700;">Haute</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td>Lancer la phase pilote avec 5-10 PME engagées</td>
-          <td style="color: ${lime}; font-weight: 700;">Haute</td>
-        </tr>
-        <tr>
-          <td>4</td>
-          <td>Équiper les agents terrain en smartphones avec l'app Labal</td>
-          <td>Moyenne</td>
-        </tr>
-        <tr>
-          <td>5</td>
-          <td>Mettre en place le GPS tracking des tournées de collecte</td>
-          <td>Moyenne</td>
-        </tr>
-      </tbody>
-    </table>
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(...RGB.lime);
+    doc.text(`${act.count}`, x + kpiBoxWidth / 2, yPos + 11, { align: "center" });
 
-    <div class="footer">
-      <p>© ${new Date().getFullYear()} Labal — Plateforme d'Assainissement Urbain — Conakry, Guinée</p>
-      <p>Document confidentiel — Généré automatiquement le ${data.dateGeneration}</p>
-    </div>
-  </div>
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...RGB.dark);
+    doc.text(act.label, x + kpiBoxWidth / 2, yPos + 19, { align: "center" });
+  });
 
-</body>
-</html>`;
+  // Highlight Box Page 1
+  yPos += kpiBoxHeight + 14;
+  doc.setFillColor(235, 247, 225); // Soft Lime Tint
+  doc.roundedRect(margin, yPos, contentWidth, 24, 3, 3, "F");
+  doc.setFillColor(...RGB.lime);
+  doc.rect(margin, yPos, 4, 24, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...RGB.deep);
+  doc.text("ENSEIGNEMENT CLÉ :", margin + 8, yPos + 9);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...RGB.dark);
+  doc.text(
+    `Un taux d'adhésion fort de ${data.kpis.tauxLabal}% des acteurs du secteur de l'assainissement confirme la viabilité`,
+    margin + 8,
+    yPos + 15
+  );
+  doc.text(
+    "et la nécessité de la numérisation complète des opérations de pré-collecte à Conakry.",
+    margin + 8,
+    yPos + 20
+  );
+
+  // Page 1 Footer
+  addPageFooter(doc, 1, 3, data.dateGeneration);
+
+  // =========================================================================
+  // PAGE 2: TABLES DES Ratios ET ADHÉSION
+  // =========================================================================
+  doc.addPage();
+
+  // Page Header
+  addPageHeader(doc, "Ratio de Paiement & Intérêt par Acteur");
+
+  yPos = 30;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...RGB.deep);
+  doc.text("3. Ventilation du Mode de Paiement par Commune (%)", margin, yPos);
+
+  yPos += 6;
+  // Table Header
+  const colW = [40, 40, 45, 55];
+  drawTableHeader(doc, margin, yPos, colW, ["Commune", "Espèces (%)", "Mobile Money (%)", "Statut Adoption"]);
+
+  yPos += 8;
+  data.ratioPaiement.forEach((row, i) => {
+    const isEven = i % 2 === 0;
+    doc.setFillColor(...(isEven ? RGB.light : RGB.white));
+    doc.rect(margin, yPos, contentWidth, 8, "F");
+    doc.setDrawColor(...RGB.grayBorder);
+    doc.line(margin, yPos + 8, margin + contentWidth, yPos + 8);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...RGB.deep);
+    doc.text(row.commune, margin + 4, yPos + 5.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RGB.dark);
+    doc.text(`${row.especes}%`, margin + colW[0] + 4, yPos + 5.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RGB.lime);
+    doc.text(`${row.mobileMoney}%`, margin + colW[0] + colW[1] + 4, yPos + 5.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RGB.dark);
+    const statusText = row.mobileMoney >= 40 ? "Favorable (>40%)" : "À développer";
+    doc.text(statusText, margin + colW[0] + colW[1] + colW[2] + 4, yPos + 5.5);
+
+    yPos += 8;
+  });
+
+  // SECTION 4: INTÉRÊT LABAL PAR ACTEUR
+  yPos += 14;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...RGB.deep);
+  doc.text("4. Taux d'Intérêt pour la Plateforme Labal par Acteur (%)", margin, yPos);
+
+  yPos += 6;
+  const colW2 = [45, 45, 45, 45];
+  drawTableHeader(doc, margin, yPos, colW2, ["Acteur Interrogé", "Oui (%)", "Peut-être (%)", "Non (%)"]);
+
+  yPos += 8;
+  data.interetLabal.forEach((row, i) => {
+    const isEven = i % 2 === 0;
+    doc.setFillColor(...(isEven ? RGB.light : RGB.white));
+    doc.rect(margin, yPos, contentWidth, 8, "F");
+    doc.setDrawColor(...RGB.grayBorder);
+    doc.line(margin, yPos + 8, margin + contentWidth, yPos + 8);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...RGB.deep);
+    doc.text(row.acteur, margin + 4, yPos + 5.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RGB.lime);
+    doc.text(`${row.oui}%`, margin + colW2[0] + 4, yPos + 5.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RGB.dark);
+    doc.text(`${row.peutEtre}%`, margin + colW2[0] + colW2[1] + 4, yPos + 5.5);
+    doc.text(`${row.non}%`, margin + colW2[0] + colW2[1] + colW2[2] + 4, yPos + 5.5);
+
+    yPos += 8;
+  });
+
+  // Page 2 Highlight Box
+  yPos += 12;
+  doc.setFillColor(235, 247, 225);
+  doc.roundedRect(margin, yPos, contentWidth, 20, 3, 3, "F");
+  doc.setFillColor(...RGB.lime);
+  doc.rect(margin, yPos, 4, 20, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...RGB.deep);
+  doc.text("OBSERVATION STRATÉGIQUE :", margin + 8, yPos + 8);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...RGB.dark);
+  doc.text(
+    "Les PME et les Zones de Transit affichent une adhésion supérieure à 75%, marquant la volonté de moderniser la gestion.",
+    margin + 8,
+    yPos + 14
+  );
+
+  // Page 2 Footer
+  addPageFooter(doc, 2, 3, data.dateGeneration);
+
+  // =========================================================================
+  // PAGE 3: RECOMMANDATIONS & SIGN-OFF
+  // =========================================================================
+  doc.addPage();
+  addPageHeader(doc, "Recommandations & Plan d'Action");
+
+  yPos = 30;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...RGB.deep);
+  doc.text("5. Plan d'Action et Recommandations Prioritaires", margin, yPos);
+
+  yPos += 6;
+  const colW3 = [15, 120, 45];
+  drawTableHeader(doc, margin, yPos, colW3, ["#", "Action Recommandée", "Niveau de Priorité"]);
+
+  yPos += 8;
+  const actions = [
+    { id: "1", text: "Intégrer le paiement Mobile Money (Orange Money / MTN MoMo)", prio: "Haute (Urgent)" },
+    { id: "2", text: "Mettre en place le système d'alerte saturation à 80% dans les ZST", prio: "Haute (Urgent)" },
+    { id: "3", text: "Démarrer la phase pilote avec les 5-10 PME les plus engagées", prio: "Haute" },
+    { id: "4", text: "Équiper les agents terrain en smartphones Android avec l'application Labal", prio: "Moyenne" },
+    { id: "5", text: "Déployer le suivi GPS des camions de transfert vers la décharge finale", prio: "Moyenne" },
+  ];
+
+  actions.forEach((act, i) => {
+    const isEven = i % 2 === 0;
+    doc.setFillColor(...(isEven ? RGB.light : RGB.white));
+    doc.rect(margin, yPos, contentWidth, 9, "F");
+    doc.setDrawColor(...RGB.grayBorder);
+    doc.line(margin, yPos + 9, margin + contentWidth, yPos + 9);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...RGB.deep);
+    doc.text(act.id, margin + 5, yPos + 6);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RGB.dark);
+    doc.text(act.text, margin + colW3[0] + 4, yPos + 6);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RGB.lime);
+    doc.text(act.prio, margin + colW3[0] + colW3[1] + 4, yPos + 6);
+
+    yPos += 9;
+  });
+
+  // Official Sign-off Box
+  yPos += 20;
+  doc.setDrawColor(...RGB.deep);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, yPos, contentWidth, 40, 3, 3, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...RGB.deep);
+  doc.text("VALIDATION ET NOMINATION OFFICIELLE — PROJET LABAL GUINÉE", margin + 8, yPos + 10);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...RGB.dark);
+  doc.text("Direction Technique & Coordination Générale des Opérations d'Assainissement", margin + 8, yPos + 17);
+  doc.text("Ville de Conakry, République de Guinée", margin + 8, yPos + 23);
+
+  doc.setDrawColor(...RGB.grayBorder);
+  doc.line(margin + 110, yPos + 28, margin + 170, yPos + 28);
+  doc.setFontSize(7.5);
+  doc.text("Cachet & Signature de l'Autorité", margin + 110, yPos + 32);
+
+  // Page 3 Footer
+  addPageFooter(doc, 3, 3, data.dateGeneration);
+
+  // Output as native Node.js Buffer
+  const arrayBuffer = doc.output("arraybuffer");
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * En-tête des pages 2 et 3
+ */
+function addPageHeader(doc: jsPDF, pageTitle: string) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFillColor(...RGB.deep);
+  doc.rect(0, 0, pageWidth, 8, "F");
+  doc.setFillColor(...RGB.lime);
+  doc.rect(0, 7, pageWidth, 1.5, "F");
+
+  doc.setTextColor(...RGB.deep);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(`LABAL GUINÉE — ${pageTitle}`, 15, 15);
+
+  doc.setDrawColor(...RGB.grayBorder);
+  doc.setLineWidth(0.3);
+  doc.line(15, 18, pageWidth - 15, 18);
+}
+
+/**
+ * En-tête de tableau réutilisable
+ */
+function drawTableHeader(doc: jsPDF, x: number, y: number, colWidths: number[], headers: string[]) {
+  const totalW = colWidths.reduce((a, b) => a + b, 0);
+  doc.setFillColor(...RGB.deep);
+  doc.rect(x, y, totalW, 8, "F");
+
+  doc.setTextColor(...RGB.white);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+
+  let curX = x;
+  headers.forEach((h, idx) => {
+    doc.text(h, curX + 4, y + 5.5);
+    curX += colWidths[idx];
+  });
+}
+
+/**
+ * Pied de page uniforme pour toutes les pages
+ */
+function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number, dateStr: string) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setDrawColor(...RGB.grayBorder);
+  doc.setLineWidth(0.3);
+  doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(100, 110, 120);
+  doc.text(
+    `© ${new Date().getFullYear()} Labal — Plateforme d'Assainissement Urbain Conakry, Guinée`,
+    15,
+    pageHeight - 9
+  );
+
+  doc.text(`Page ${pageNum} sur ${totalPages}`, pageWidth - 15, pageHeight - 9, { align: "right" });
 }
