@@ -33,19 +33,21 @@ export interface PptxReportData {
 }
 
 /**
-  Génère une présentation PowerPoint (.pptx) de 10 slides ultra-professionnelles,
-  structurées, dynamiques et visuellement riches pour le projet Labal Guinée.
+ * Génère une présentation PowerPoint (.pptx) de 10 slides valides, haute qualité,
+ * sans aucune coordonnée en pourcentage (évite les plantages de LibreOffice / MS PowerPoint).
+ * Layout 16:9 (Largeur = 13.33 pouces, Hauteur = 7.5 pouces).
  */
 export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   const pptx = new PptxGenJS();
 
-  // Configuration Générale 16:9
+  // Layout 16:9 (13.33 x 7.5 pouces)
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "Labal — Plateforme d'Assainissement Urbain";
   pptx.company = "Labal Guinée & Ville de Conakry";
   pptx.subject = "Rapport National d'Enquête sur l'Assainissement Urbain à Conakry";
   pptx.title = "Labal — Diagnostic & Feuille de Route Assainissement";
 
+  const SLIDE_WIDTH = 13.33;
   const deepGreen = COLORS.deep.replace("#", ""); // 064420
   const limeGreen = COLORS.lime.replace("#", ""); // 76C01D
   const darkCharcoal = "1E293B";
@@ -53,16 +55,15 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   const white = "FFFFFF";
   const borderGray = "E2E8F0";
 
-  // Helper pour ajouter un en-tête standard sur les slides de contenu
+  // Helper pour ajouter un en-tête standard avec coordonnées numériques strictes
   const addSlideHeader = (slide: PptxGenJS.Slide, title: string, subtitle: string) => {
-    // Fond léger
     slide.background = { color: bgLight };
 
-    // Bande haut accent vert foncé
+    // Bande haut accent vert foncé (Largeur 13.33 pouces)
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
       y: 0,
-      w: "100%",
+      w: SLIDE_WIDTH,
       h: 0.1,
       fill: { color: deepGreen },
     });
@@ -71,7 +72,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
       y: 0.1,
-      w: "100%",
+      w: SLIDE_WIDTH,
       h: 0.04,
       fill: { color: limeGreen },
     });
@@ -80,7 +81,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     slide.addText(title, {
       x: 0.6,
       y: 0.35,
-      w: 11,
+      w: 12.0,
       h: 0.5,
       fontSize: 22,
       fontFace: "Arial",
@@ -92,7 +93,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     slide.addText(subtitle, {
       x: 0.6,
       y: 0.85,
-      w: 11,
+      w: 12.0,
       h: 0.35,
       fontSize: 12,
       fontFace: "Arial",
@@ -112,14 +113,14 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
       y: 7.1,
-      w: "100%",
+      w: SLIDE_WIDTH,
       h: 0.4,
       fill: { color: white },
     });
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
       y: 7.1,
-      w: "100%",
+      w: SLIDE_WIDTH,
       h: 0.01,
       fill: { color: borderGray },
     });
@@ -127,7 +128,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     slide.addText("LABAL GUINÉE · Diagnostic Assainissement Urbain Conakry", {
       x: 0.6,
       y: 7.15,
-      w: 8,
+      w: 8.0,
       h: 0.3,
       fontSize: 10,
       fontFace: "Arial",
@@ -147,12 +148,12 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   };
 
   // ============================================================
-  // SLIDE 1 : PAGE DE TITRE IMPOSANTE & ÉLÉGANTE
+  // SLIDE 1 : PAGE DE TITRE
   // ============================================================
   const slide1 = pptx.addSlide();
   slide1.background = { color: deepGreen };
 
-  // Accent diagonale/rect lime à gauche
+  // Accent vertical gauche
   slide1.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
@@ -186,7 +187,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   slide1.addText("LABAL GUINÉE", {
     x: 1.0,
     y: 1.6,
-    w: 11,
+    w: 11.0,
     h: 1.2,
     fontSize: 54,
     fontFace: "Arial",
@@ -198,7 +199,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   slide1.addText("Diagnostic National et Numérisation de l'Assainissement Urbain", {
     x: 1.0,
     y: 2.8,
-    w: 11,
+    w: 11.0,
     h: 0.7,
     fontSize: 24,
     fontFace: "Arial",
@@ -206,7 +207,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     bold: true,
   });
 
-  // Carte de synthèse des 5 communes
+  // Carte de synthèse
   slide1.addShape(pptx.ShapeType.rect, {
     x: 1.0,
     y: 3.8,
@@ -220,7 +221,7 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   slide1.addText("PÉRIMÈTRE DE L'ÉTUDE DE TERRAIN :", {
     x: 1.3,
     y: 4.0,
-    w: 10,
+    w: 10.0,
     h: 0.35,
     fontSize: 12,
     fontFace: "Arial",
@@ -245,11 +246,10 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     }
   );
 
-  // Footer Titre
   slide1.addText(`Direction Technique & Coordination des Opérations · ${data.dateGeneration}`, {
     x: 1.0,
     y: 6.8,
-    w: 11,
+    w: 11.0,
     h: 0.4,
     fontSize: 11,
     fontFace: "Arial",
@@ -298,7 +298,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       rectRadius: 0.1,
     });
 
-    // En-tête carte
     slide2.addShape(pptx.ShapeType.rect, {
       x,
       y,
@@ -331,7 +330,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     });
   });
 
-  // Callout Box Synthèse Bas de Slide
   slide2.addShape(pptx.ShapeType.rect, {
     x: 0.6,
     y: 5.3,
@@ -398,14 +396,14 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       unit: "Pénétration",
       label: "USAGE MOBILE MONEY",
       desc: "Part des transactions numériques prêtes à basculer en paiement mobile.",
-      color: "2563EB", // Blue accent
+      color: "2563EB",
     },
     {
       val: `${data.kpis.saturationCritique}%`,
       unit: "Critique",
       label: "SATURATION DES ZST",
       desc: "Proportion des points de transit dépassant 80% de leur capacité maximale.",
-      color: "DC2626", // Red accent
+      color: "DC2626",
     },
   ];
 
@@ -415,7 +413,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     const x = 0.6 + col * 6.2;
     const y = 1.5 + row * 2.7;
 
-    // Card Container
     slide3.addShape(pptx.ShapeType.rect, {
       x,
       y,
@@ -426,7 +423,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       rectRadius: 0.1,
     });
 
-    // Left color bar
     slide3.addShape(pptx.ShapeType.rect, {
       x,
       y,
@@ -435,7 +431,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       fill: { color: kpi.color },
     });
 
-    // Big Value
     slide3.addText(kpi.val, {
       x: x + 0.4,
       y: y + 0.2,
@@ -447,7 +442,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       bold: true,
     });
 
-    // Label & Unit
     slide3.addText(kpi.label, {
       x: x + 3.0,
       y: y + 0.3,
@@ -470,7 +464,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       bold: true,
     });
 
-    // Separator line
     slide3.addShape(pptx.ShapeType.rect, {
       x: x + 0.4,
       y: y + 1.25,
@@ -479,7 +472,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       fill: { color: borderGray },
     });
 
-    // Description text
     slide3.addText(kpi.desc, {
       x: x + 0.4,
       y: y + 1.4,
@@ -502,7 +494,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     "Échantillonnage équilibré entre pré-collecteurs, ménages, gestionnaires et autorités"
   );
 
-  // Pie chart data
   const pieChartData = [
     {
       name: "Acteurs Audités",
@@ -526,7 +517,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     chartColors: [deepGreen, limeGreen, "2563EB", "F59E0B"],
   });
 
-  // Right Side Detailed Explanatory Panel
   slide4.addShape(pptx.ShapeType.rect, {
     x: 7.1,
     y: 1.5,
@@ -606,7 +596,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     barGrouping: "clustered",
   });
 
-  // Explanatory Box Right
   slide5.addShape(pptx.ShapeType.rect, {
     x: 8.1,
     y: 1.5,
@@ -654,7 +643,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     "Passer du cash vulnérable à un modèle de recouvrement par Mobile Money (Orange / MTN)"
   );
 
-  // Left Card: Problem Espèces
   slide6.addShape(pptx.ShapeType.rect, {
     x: 0.6,
     y: 1.5,
@@ -694,7 +682,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     lineSpacingMultiple: 1.3,
   });
 
-  // Right Card: Solution Mobile Money
   slide6.addShape(pptx.ShapeType.rect, {
     x: 6.8,
     y: 1.5,
@@ -744,9 +731,8 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     "Audit des points d'apport volontaire et prévenance des risques d'engorgement"
   );
 
-  // Top Stat Cards
   const zstStats = [
-    { label: "Zones de Transit Evaluées", val: "45 Sites", color: deepGreen },
+    { label: "Zones de Transit Évaluées", val: "45 Sites", color: deepGreen },
     { label: "Taux Saturation Critique", val: `${data.kpis.saturationCritique}%`, color: "DC2626" },
     { label: "Délai Moyen d'Évacuation", val: "48 à 72h", color: "D97706" },
   ];
@@ -786,7 +772,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     });
   });
 
-  // Lower Content Box
   slide7.addShape(pptx.ShapeType.rect, {
     x: 0.6,
     y: 3.0,
@@ -948,7 +933,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       rectRadius: 0.1,
     });
 
-    // En-tête Phase
     slide9.addShape(pptx.ShapeType.rect, {
       x,
       y,
@@ -982,7 +966,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
       align: "center",
     });
 
-    // Separator line
     slide9.addShape(pptx.ShapeType.rect, {
       x: x + 0.4,
       y: y + 1.7,
@@ -1009,11 +992,10 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
   const slide10 = pptx.addSlide();
   addSlideHeader(
     slide10,
-    "9. Governance, Validation Officielle & Prochaines Étapes",
+    "9. Gouvernance, Validation Officielle & Prochaines Étapes",
     "Engagement institutionnel pour la modernisation durable de la capitale"
   );
 
-  // Left Box: Commitments
   slide10.addShape(pptx.ShapeType.rect, {
     x: 0.6,
     y: 1.5,
@@ -1053,7 +1035,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     lineSpacingMultiple: 1.3,
   });
 
-  // Right Box: Official Sign-off block
   slide10.addShape(pptx.ShapeType.rect, {
     x: 7.7,
     y: 1.5,
@@ -1093,7 +1074,6 @@ export function generatePptxPresentation(data: PptxReportData): PptxGenJS {
     }
   );
 
-  // Line for stamp / signature
   slide10.addShape(pptx.ShapeType.rect, {
     x: 8.5,
     y: 4.8,
