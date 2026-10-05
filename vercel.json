@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "cleanUrls": true,
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "functions": {
+    "app/api/export/pdf/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "app/api/export/pptx/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}
