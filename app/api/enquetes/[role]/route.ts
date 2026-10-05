@@ -20,6 +20,50 @@ const roleToTable: Record<string, string> = {
   autorites: "enquetes_autorites",
 };
 
+const booleanFields = new Set([
+  "dessert_commerces", "refus_menages", "zone_geographique_definie", 
+  "refus_collecteur", "demandes_en_attente", "systeme_incidents", 
+  "accord_recontact", "a_change_collecteur", "bacs_debordants_7_jours", 
+  "interet_bouton_commande", "notification_approche", "suivi_carte_temps_reel", 
+  "tri_actuel", "pret_modules_video", "recu_papier", "conflit_paiement", 
+  "possession_smartphone", "pret_installer_labal", "cloture_dalle", 
+  "presence_pont_bascule", "tri_sur_place", "acces_limite_agrees", 
+  "refus_acces", "systeme_pesee", "registre_entrees_sorties", 
+  "conventions_pme_signees", "tri_source_exige", "sanctions_non_respect", 
+  "espace_transit_dedie", "interet_plateforme_labal", "pret_integrer_projet_pilote"
+]);
+
+const integerFields = new Set([
+  "annee_creation", "nb_commerces", "duree_tournee_heures", "voyages_par_jour",
+  "nb_personnes_foyer", "nb_sacs_semaine", "montant_mensuel_gnf",
+  "nb_trieurs", "nb_pme_clientes", "nb_rotations_quotidiennes", "annee_prise_fonction"
+]);
+
+function sanitizePayload(data: Record<string, any>) {
+  const clean: Record<string, any> = {};
+
+  for (const [key, val] of Object.entries(data)) {
+    if (val === "" || val === undefined) {
+      clean[key] = null;
+    } else if (booleanFields.has(key)) {
+      if (typeof val === "boolean") clean[key] = val;
+      else if (val === "true" || val === "Oui") clean[key] = true;
+      else if (val === "false" || val === "Non") clean[key] = false;
+      else clean[key] = Boolean(val);
+    } else if (integerFields.has(key)) {
+      if (typeof val === "number") clean[key] = Math.round(val);
+      else {
+        const parsed = parseInt(String(val), 10);
+        clean[key] = isNaN(parsed) ? null : parsed;
+      }
+    } else {
+      clean[key] = val;
+    }
+  }
+
+  return clean;
+}
+
 type RouteParams = {
   params: Promise<{ role: string }>;
 };
@@ -47,6 +91,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const sanitizedData = sanitizePayload(result.data);
+
     // Try to insert into Supabase if configured
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -58,14 +104,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const tableName = roleToTable[role];
       const { data, error } = await supabase
         .from(tableName)
-        .insert(result.data)
+        .insert(sanitizedData)
         .select("id, created_at")
         .single();
 
       if (error) {
         console.error(`[API] Erreur Supabase ${tableName}:`, error);
         return NextResponse.json(
-          { error: "Erreur d'enregistrement en base de données" },
+          { error: `Erreur d'enregistrement DB: ${error.message}` },
           { status: 500 }
         );
       }
@@ -91,10 +137,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("[API] Erreur inattendue:", err);
     return NextResponse.json(
-      { error: "Erreur interne du serveur" },
+      { error: `Erreur interne du serveur: ${err?.message || err}` },
       { status: 500 }
     );
   }

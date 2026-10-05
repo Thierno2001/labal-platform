@@ -129,7 +129,10 @@ function PmeFormContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        if (!response.ok) throw new Error("Erreur serveur");
+        const resData = await response.json();
+        if (!response.ok) {
+          throw new Error(resData.error || resData.details || "Erreur lors de la sauvegarde sur le serveur.");
+        }
         alert("Enquête soumise avec succès !");
       } else {
         await addPendingSubmission(FORM_TYPE, data);
@@ -138,9 +141,9 @@ function PmeFormContent() {
       // Clear draft after submit
       await deleteDraft(FORM_TYPE);
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Une erreur est survenue lors de la soumission.");
+      alert(`Une erreur est survenue lors de la soumission : ${error.message || "Erreur inconnue"}`);
     } finally {
       setIsSubmitting(false);
     }

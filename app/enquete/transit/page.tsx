@@ -133,14 +133,16 @@ function TransitContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      if (!res.ok) throw new Error("Failed to submit");
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || resData.details || "Erreur lors de la soumission");
+      }
       localStorage.removeItem(STORAGE_KEY);
       alert("Enquête soumise avec succès !");
       // Optional: reset form or redirect
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erreur lors de la soumission. Les données sont sauvegardées localement.");
+      alert(`Erreur lors de la soumission : ${error.message || "Erreur inconnue"}`);
     } finally {
       setIsSubmitting(false);
     }

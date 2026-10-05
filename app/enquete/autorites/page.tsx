@@ -96,8 +96,9 @@ function AutoritesContent() {
         body: JSON.stringify(data),
       });
 
+      const resData = await response.json();
       if (!response.ok) {
-        throw new Error("Failed to submit survey");
+        throw new Error(resData.error || resData.details || "Erreur de soumission");
       }
 
       localStorage.removeItem(STORAGE_KEY);
@@ -108,9 +109,9 @@ function AutoritesContent() {
       setCurrentStep(0);
       setCompletedSteps(new Set());
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Une erreur s'est produite. Les données sont sauvegardées localement.");
+      alert(`Une erreur s'est produite lors de la soumission : ${error.message || "Erreur inconnue"}`);
     } finally {
       setIsSubmitting(false);
     }

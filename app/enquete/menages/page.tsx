@@ -102,8 +102,10 @@ function MenagesSurveyContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        
-        if (!res.ok) throw new Error("Erreur de soumission");
+        const resData = await res.json();
+        if (!res.ok) {
+          throw new Error(resData.error || resData.details || "Erreur de soumission");
+        }
       } else {
         // Offline submit simulation
         const offlineQueue = JSON.parse(localStorage.getItem("labal_offline_queue") || "[]");
@@ -115,9 +117,9 @@ function MenagesSurveyContent() {
       setSubmitSuccess(true);
       localStorage.removeItem(DRAFT_KEY);
       reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Une erreur est survenue lors de la soumission. Les données ont été sauvegardées localement.");
+      alert(`Une erreur est survenue lors de la soumission : ${error.message || "Erreur inconnue"}`);
     } finally {
       setIsSubmitting(false);
     }
