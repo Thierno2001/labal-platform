@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { INITIAL_USERS, INITIAL_AUDIT_LOGS } from "@/lib/auth/initialData";
 import type { UserProfile, AuditLog } from "@/lib/auth/types";
 
@@ -11,9 +11,27 @@ function getSupabaseUrl() {
   return process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
 }
 
+function getSupabaseKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    ""
+  );
+}
+
 function checkSupabaseConfigured() {
   const url = getSupabaseUrl();
-  return Boolean(url && url.length > 10 && !url.includes("placeholder"));
+  const key = getSupabaseKey();
+  return Boolean(url && url.length > 10 && !url.includes("placeholder") && key && key.length > 5);
+}
+
+function getSupabaseServerClient() {
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  return createClient(url, key, {
+    auth: { persistSession: false },
+  });
 }
 
 /**
@@ -25,18 +43,18 @@ export async function GET() {
 
   if (isConfigured) {
     try {
-      const { data: dbProfiles, error: profilesErr } = await supabase
+      const client = getSupabaseServerClient();
+      const { data: dbProfiles, error: profilesErr } = await client
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-      const { data: dbLogs, error: logsErr } = await supabase
+      const { data: dbLogs, error: logsErr } = await client
         .from("audit_logs")
         .select("*")
         .order("timestamp", { ascending: false });
 
       if (!profilesErr && dbProfiles) {
-        // Si la table profiles dans Supabase est encore vide, renvoyer les utilisateurs initiaux fusionnés
         const mergedUsers = dbProfiles.length > 0 ? dbProfiles : INITIAL_USERS;
         return NextResponse.json({
           users: mergedUsers,
@@ -51,7 +69,6 @@ export async function GET() {
     }
   }
 
-  // Baseline fallback: Server memory store
   return NextResponse.json({
     users: serverUsersStore,
     auditLogs: serverAuditStore,
@@ -75,7 +92,8 @@ export async function POST(req: Request) {
     const isConfigured = checkSupabaseConfigured();
 
     if (isConfigured) {
-      const { data, error } = await supabase
+      const client = getSupabaseServerClient();
+      const { data, error } = await client
         .from("profiles")
         .insert([
           {
@@ -96,13 +114,19 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, user: data, source: "supabase" });
       } else if (error) {
         console.error("[API Auth POST Supabase Error]:", error);
-        // Tenter d'insérer en mode fallback si la table n'a pas encore le trigger UUID
-        return NextResponse.json({
-          success: true,
-          user: newUser,
-          source: "supabase_error_fallback",
-          dbError: error.message,
-        });
+
+        // Si l'erreur est un conflit d'email unique, renvoyer succes
+        if (error.code === "23505") {
+          return NextResponse.json({ success: true, user: newUser, source: "supabase_duplicate" });
+        }
+
+        return NextResponse.json(
+          {
+            error: `Erreur Supabase: ${error.message}`,
+            code: error.code,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -138,7 +162,8 @@ export async function PATCH(req: Request) {
     const isConfigured = checkSupabaseConfigured();
 
     if (isConfigured) {
-      const { data: updatedProfile, error: updateErr } = await supabase
+      const client = getSupabaseServerClient();
+      const { data: updatedProfile, error: updateErr } = await client
         .from("profiles")
         .update({
           status: newStatus,
@@ -151,7 +176,7 @@ export async function PATCH(req: Request) {
 
       if (!updateErr && updatedProfile) {
         const logAction = action === "APPROVE" ? "USER_APPROVED" : "USER_REJECTED";
-        await supabase.from("audit_logs").insert([
+        await client.from("audit_logs").insert([
           {
             actor_id: adminId || "00000000-0000-0000-0000-000000000001",
             actor_name: adminName || "Marseille Camara",
