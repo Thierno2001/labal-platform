@@ -1,5 +1,5 @@
 -- ====================================================================
--- LABAL PLATFORM — SÉCURITÉ, RBAC & GESTION DES MOTS DE PASSE (HACHAGE OWASP)
+-- LABAL PLATFORM — ARCHITECTURE SÉCURITÉ OWASP & RBAC PRODUCTION
 -- ====================================================================
 
 -- 1. Types ENUM pour les rôles et statuts de sécurité
@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- 5. Fonction SECURITY DEFINER anti-récursion
+-- 5. Fonction SECURITY DEFINER d'Élévation Privilégiée Anti-Récursion
+-- Permet de vérifier le statut Admin sans déclencher la récursion RLS PostgreSQL
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -62,21 +63,46 @@ AS $$
   );
 $$;
 
--- 6. Politiques RLS sans récursion
+-- ====================================================================
+-- 6. POLITIQUES DE SÉCURITÉ RLS STRICTES (ZERO-TRUST & OWASP)
+-- ====================================================================
+
+-- Nettoyage préventif des définitions de règles (Ne supprime AUCUNE donnée dans la table)
 DROP POLICY IF EXISTS admin_manage_profiles ON public.profiles;
 DROP POLICY IF EXISTS self_read_profile ON public.profiles;
 DROP POLICY IF EXISTS anon_register_profile ON public.profiles;
+DROP POLICY IF EXISTS self_update_profile ON public.profiles;
 DROP POLICY IF EXISTS allow_all_profiles ON public.profiles;
 
-CREATE POLICY allow_all_profiles ON public.profiles
+-- RLS 1: Les Administrateurs ont un accès complet de gestion sur tous les profils
+CREATE POLICY admin_manage_profiles ON public.profiles
   FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (public.is_admin(auth.uid()))
+  WITH CHECK (public.is_admin(auth.uid()));
 
+-- RLS 2: Les Enquêteurs peuvent uniquement consulter leur propre profil
+CREATE POLICY self_read_profile ON public.profiles
+  FOR SELECT
+  USING (auth.uid() = id OR public.is_admin(auth.uid()));
+
+-- RLS 3: Les nouveaux inscrits peuvent UNIQUEMENT créer leur compte avec le statut 'PENDING' et rôle 'ENQUETEUR'
+CREATE POLICY anon_register_profile ON public.profiles
+  FOR INSERT
+  WITH CHECK (
+    status = 'PENDING' AND 
+    role = 'ENQUETEUR'
+  );
+
+-- RLS 4: Sécurité des Logs d'Audit (Accès restreint)
+DROP POLICY IF EXISTS admin_read_audit ON public.audit_logs;
 DROP POLICY IF EXISTS allow_all_audit ON public.audit_logs;
-CREATE POLICY allow_all_audit ON public.audit_logs
-  FOR ALL
-  USING (true)
+
+CREATE POLICY admin_read_audit ON public.audit_logs
+  FOR SELECT
+  USING (public.is_admin(auth.uid()));
+
+CREATE POLICY system_insert_audit ON public.audit_logs
+  FOR INSERT
   WITH CHECK (true);
 
 -- 7. SEED : 3 COMPTES ADMINISTRATEURS RACINE PRÉ-VALIDÉS AVEC MOTS DE PASSE HACHÉS (PBKDF2)
