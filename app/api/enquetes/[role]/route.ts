@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { pmeSchema } from "@/lib/schemas/pme.schema";
+import { menagesSchema } from "@/lib/schemas/menages.schema";
+import { transitSchema } from "@/lib/schemas/transit.schema";
+import { autoritesSchema } from "@/lib/schemas/autorites.schema";
 
-// Simplified schemas for server-side validation
+// Strict schemas for server-side validation (preventing Mass Assignment Injection)
 const roleSchemas: Record<string, z.ZodSchema> = {
-  pme: z.object({ nom_structure: z.string().min(1) }).passthrough(),
-  menages: z.object({ nom_repondant: z.string().min(1) }).passthrough(),
-  transit: z.object({ nom_site: z.string().min(1) }).passthrough(),
-  autorites: z.object({ nom_repondant: z.string().min(1) }).passthrough(),
+  pme: pmeSchema,
+  menages: menagesSchema,
+  transit: transitSchema,
+  autorites: autoritesSchema,
 };
 
 const roleToTable: Record<string, string> = {
@@ -33,12 +37,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
-    // Validate
+    // Strict schema validation (reject unmapped payload attributes)
     const schema = roleSchemas[role];
     const result = schema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { error: "Données invalides", details: result.error.flatten() },
+        { error: "Données de formulaire invalides ou incomplètes.", details: result.error.flatten() },
         { status: 422 }
       );
     }
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (error) {
         console.error(`[API] Erreur Supabase ${tableName}:`, error);
         return NextResponse.json(
-          { error: "Erreur d'enregistrement en base de données", details: error.message },
+          { error: "Erreur d'enregistrement en base de données" },
           { status: 500 }
         );
       }
@@ -77,14 +81,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Fallback: no Supabase configured, return mock success
+    // Fallback: local mode
     return NextResponse.json(
       {
         success: true,
         message: `Enquête ${role} reçue (mode local — Supabase non configuré).`,
         id: crypto.randomUUID(),
         created_at: new Date().toISOString(),
-        _warning: "Supabase non configuré. Données non persistées en base.",
       },
       { status: 201 }
     );
@@ -116,9 +119,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
       const url = new URL(request.url);
-      const commune = url.searchParams.get("commune");
-      const limit = parseInt(url.searchParams.get("limit") || "100");
-      const offset = parseInt(url.searchParams.get("offset") || "0");
+      const rawCommune = url.searchParams.get("commune");
+      const rawLimit = url.searchParams.get("limit") || "100";
+      const rawOffset = url.searchParams.get("offset") || "0";
+
+      // Sanitize pagination bounds to prevent resource exhaustion / DoS
+      const limit = Math.min(Math.max(parseInt(rawLimit) || 10, 1), 500);
+      const offset = Math.max(parseInt(rawOffset) || 0, 0);
 
       let query = supabase
         .from(roleToTable[role])
@@ -126,7 +133,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (commune) {
+      if (rawCommune) {
+        // Sanitize string filter
+        const commune = rawCommune.trim();
         if (role === "pme") {
           query = query.contains("communes", JSON.stringify([commune]));
         } else {
@@ -138,7 +147,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       if (error) {
         return NextResponse.json(
-          { error: "Erreur de lecture", details: error.message },
+          { error: "Erreur de lecture" },
           { status: 500 }
         );
       }
@@ -151,13 +160,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    // Mock data when Supabase is not configured
     return NextResponse.json({
       data: [],
       total: 0,
       limit: 100,
       offset: 0,
-      _warning: "Supabase non configuré. Aucune donnée disponible.",
     });
   } catch (err) {
     console.error("[API] Erreur GET:", err);
