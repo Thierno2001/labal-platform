@@ -1,80 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { UserProfile, AuditLog, UserStatus } from "./types";
 import { hashPassword, verifyPassword } from "./password";
 
-export const INITIAL_ADMINS: UserProfile[] = [
-  {
-    id: "admin-1",
-    email: "admin1@labal-guinee.org",
-    full_name: "Marseille Camara",
-    phone: "+224 621 00 11 22",
-    commune_affectation: "Toutes (Conakry)",
-    role: "ADMIN",
-    status: "APPROVED",
-    password_hash: "pbkdf2:sha256:100000$a1b2c3d4e5f60718293a4b5c6d7e8f00$3f0582f8ff52d5bc92d8eb493b7e17fed35a2ef5b09ee9851d230087dbc7e7d1",
-    approved_by: "SYSTEM",
-    approved_at: new Date().toISOString(),
-    created_at: "2026-09-01T08:00:00Z",
-  },
-  {
-    id: "admin-2",
-    email: "admin2@labal-guinee.org",
-    full_name: "Fatoumata Binta Sow",
-    phone: "+224 622 33 44 55",
-    commune_affectation: "Toutes (Conakry)",
-    role: "ADMIN",
-    status: "APPROVED",
-    password_hash: "pbkdf2:sha256:100000$b2c3d4e5f60718293a4b5c6d7e8f00a1$d4391b42f3bfc68006be2a2bce2e6b158bee74b269d61219c661cba1bcfa69f4",
-    approved_by: "SYSTEM",
-    approved_at: new Date().toISOString(),
-    created_at: "2026-09-01T08:00:00Z",
-  },
-  {
-    id: "admin-3",
-    email: "admin3@labal-guinee.org",
-    full_name: "Thierno Mamadou Diallo",
-    phone: "+224 628 77 88 99",
-    commune_affectation: "Toutes (Conakry)",
-    role: "ADMIN",
-    status: "APPROVED",
-    password_hash: "pbkdf2:sha256:100000$c3d4e5f60718293a4b5c6d7e8f00a1b2$578e724db734882d2b7409211cb1b84a5dbc5c9a12acc060ea0861837eab7bd7",
-    approved_by: "SYSTEM",
-    approved_at: new Date().toISOString(),
-    created_at: "2026-09-01T08:00:00Z",
-  },
-];
-
-export const INITIAL_USERS: UserProfile[] = [
-  ...INITIAL_ADMINS,
-  {
-    id: "enq-1",
-    email: "amara.diallo@labal-guinee.org",
-    full_name: "Amara Diallo",
-    phone: "+224 620 11 22 33",
-    commune_affectation: "Ratoma",
-    role: "ENQUETEUR",
-    status: "APPROVED",
-    password_hash: "pbkdf2:sha256:100000$d4e5f60718293a4b5c6d7e8f00a1b2c3$85f18fff54516956949152fe0d16a0ff0b82f0ab3d0b47be51573c6f168729d0",
-    approved_by: "admin-1",
-    approved_at: "2026-09-10T10:00:00Z",
-    created_at: "2026-09-10T09:00:00Z",
-  },
-];
-
-export const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: "audit-1",
-    actor_id: "admin-1",
-    actor_name: "Marseille Camara",
-    action: "USER_APPROVED",
-    target_id: "enq-1",
-    target_name: "Amara Diallo",
-    details: "Approbation du compte Enquêteur pour la zone Ratoma",
-    timestamp: "2026-09-10T10:00:00Z",
-  },
-];
+import { INITIAL_ADMINS, INITIAL_USERS, INITIAL_AUDIT_LOGS } from "./initialData";
+export { INITIAL_ADMINS, INITIAL_USERS, INITIAL_AUDIT_LOGS };
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -83,15 +14,14 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   registerUser: (data: Omit<UserProfile, "id" | "role" | "status" | "created_at">, plainPassword: string) => Promise<UserProfile>;
-  approveUser: (userId: string) => void;
-  rejectUser: (userId: string) => void;
+  approveUser: (userId: string) => Promise<void>;
+  rejectUser: (userId: string) => Promise<void>;
+  refreshUsers: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_USER_KEY = "labal_auth_user_v2";
-const AUTH_USERS_LIST_KEY = "labal_auth_users_v2";
-const AUTH_AUDIT_LOGS_KEY = "labal_auth_audit_v2";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -99,53 +29,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [mounted, setMounted] = useState(false);
 
+  // Synchronisation centralisée avec le serveur
+  const refreshUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/users", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && Array.isArray(data.users)) {
+          // Fusionner avec la liste initiale pour garantir que les 3 admins existent toujours
+          const mergedMap = new Map<string, UserProfile>();
+          INITIAL_USERS.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
+          data.users.forEach((u: UserProfile) => mergedMap.set(u.email.toLowerCase(), u));
+          
+          const finalUsers = Array.from(mergedMap.values());
+          setUsers(finalUsers);
+
+          // Si l'utilisateur actuel est connecté, mettre à jour son statut s'il a changé
+          if (currentUser) {
+            const freshCurrent = finalUsers.find((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
+            if (freshCurrent && freshCurrent.status !== currentUser.status) {
+              setCurrentUser(freshCurrent);
+              localStorage.setItem(AUTH_USER_KEY, JSON.stringify(freshCurrent));
+            }
+          }
+        }
+        if (data.auditLogs && Array.isArray(data.auditLogs)) {
+          setAuditLogs(data.auditLogs);
+        }
+      }
+    } catch (err) {
+      console.warn("[AuthContext] Sync error:", err);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     setMounted(true);
     try {
       const savedUser = localStorage.getItem(AUTH_USER_KEY);
-      const savedUsersList = localStorage.getItem(AUTH_USERS_LIST_KEY);
-      const savedAuditLogs = localStorage.getItem(AUTH_AUDIT_LOGS_KEY);
-
-      if (savedUsersList) {
-        setUsers(JSON.parse(savedUsersList));
-      } else {
-        localStorage.setItem(AUTH_USERS_LIST_KEY, JSON.stringify(INITIAL_USERS));
-      }
-
-      if (savedAuditLogs) {
-        setAuditLogs(JSON.parse(savedAuditLogs));
-      } else {
-        localStorage.setItem(AUTH_AUDIT_LOGS_KEY, JSON.stringify(INITIAL_AUDIT_LOGS));
-      }
-
       if (savedUser) {
         setCurrentUser(JSON.parse(savedUser));
-      } else {
-        setCurrentUser(null);
       }
     } catch (e) {
       console.error("[Auth] Failed to load local storage session", e);
     }
+    
+    // Premier chargement & Polling automatique toutes les 5 secondes pour synchroniser tous les appareils
+    refreshUsers();
+    const interval = setInterval(() => {
+      refreshUsers();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const saveState = (updatedUser: UserProfile | null, updatedUsers: UserProfile[], updatedLogs: AuditLog[]) => {
-    try {
-      if (updatedUser) {
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser));
-      } else {
-        localStorage.removeItem(AUTH_USER_KEY);
-      }
-      localStorage.setItem(AUTH_USERS_LIST_KEY, JSON.stringify(updatedUsers));
-      localStorage.setItem(AUTH_AUDIT_LOGS_KEY, JSON.stringify(updatedLogs));
-    } catch (e) {
-      console.error("[Auth] Storage save error", e);
-    }
-  };
-
   /**
-   * Authentification sécurisée par Email et Mot de passe Haché (PBKDF2/SHA-256)
+   * Authentification sécurisée
    */
   const login = async (email: string, plainPassword: string): Promise<{ success: boolean; message?: string }> => {
+    // S'assurer d'avoir la liste à jour
+    await refreshUsers();
+    
     const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
     if (!found) {
       return { success: false, message: "Adresse email inconnue." };
@@ -155,14 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: "Erreur d'authentification : mot de passe non configuré." };
     }
 
-    // Vérification cryptographique Timing-Safe du Hash PBKDF2
     const isPasswordValid = await verifyPassword(plainPassword, found.password_hash);
     if (!isPasswordValid) {
       return { success: false, message: "Mot de passe incorrect." };
     }
 
     setCurrentUser(found);
-    saveState(found, users, auditLogs);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(found));
     return { success: true };
   };
 
@@ -172,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Inscription Enquêteur avec hachage sécurisé du mot de passe
+   * Inscription Enquêteur (Envoyée au serveur centralisé)
    */
   const registerUser = async (
     data: Omit<UserProfile, "id" | "role" | "status" | "created_at">,
@@ -189,87 +131,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       created_at: new Date().toISOString(),
     };
 
-    const nextUsers = [newUser, ...users];
-    setUsers(nextUsers);
+    try {
+      const res = await fetch("/api/auth/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newUser, plainPassword }),
+      });
+      if (res.ok) {
+        await refreshUsers();
+      }
+    } catch (err) {
+      console.error("[AuthContext] Failed to post new user to server:", err);
+    }
+
+    // Mise à jour locale immédiate
+    setUsers((prev) => [newUser, ...prev]);
     setCurrentUser(newUser);
-    saveState(newUser, nextUsers, auditLogs);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
+
     return newUser;
   };
 
-  const approveUser = (userId: string) => {
-    const target = users.find((u) => u.id === userId);
-    if (!target) return;
-
-    const updatedUsers = users.map((u) =>
-      u.id === userId
-        ? {
-            ...u,
-            status: "APPROVED" as UserStatus,
-            approved_by: currentUser?.id || "admin-1",
-            approved_at: new Date().toISOString(),
-          }
-        : u
-    );
-
-    const newAuditLog: AuditLog = {
-      id: `audit-${Date.now()}`,
-      actor_id: currentUser?.id || "admin-1",
-      actor_name: currentUser?.full_name || "Marseille Camara",
-      action: "USER_APPROVED",
-      target_id: target.id,
-      target_name: target.full_name,
-      details: `Approbation du compte Enquêteur (${target.commune_affectation})`,
-      timestamp: new Date().toISOString(),
-    };
-
-    const nextLogs = [newAuditLog, ...auditLogs];
-    setUsers(updatedUsers);
-    setAuditLogs(nextLogs);
-
-    let nextCurrent = currentUser;
-    if (currentUser?.id === userId) {
-      nextCurrent = { ...currentUser, status: "APPROVED", approved_at: new Date().toISOString() };
-      setCurrentUser(nextCurrent);
+  /**
+   * Approbation d'un utilisateur par un Admin (Envoyée au serveur centralisé)
+   */
+  const approveUser = async (userId: string) => {
+    try {
+      await fetch("/api/auth/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          action: "APPROVE",
+          adminId: currentUser?.id,
+          adminName: currentUser?.full_name,
+        }),
+      });
+    } catch (err) {
+      console.error("[AuthContext] Error approving user:", err);
     }
-
-    saveState(nextCurrent, updatedUsers, nextLogs);
+    await refreshUsers();
   };
 
-  const rejectUser = (userId: string) => {
-    const target = users.find((u) => u.id === userId);
-    if (!target) return;
-
-    const updatedUsers = users.map((u) =>
-      u.id === userId
-        ? {
-            ...u,
-            status: "REJECTED" as UserStatus,
-          }
-        : u
-    );
-
-    const newAuditLog: AuditLog = {
-      id: `audit-${Date.now()}`,
-      actor_id: currentUser?.id || "admin-1",
-      actor_name: currentUser?.full_name || "Marseille Camara",
-      action: "USER_REJECTED",
-      target_id: target.id,
-      target_name: target.full_name,
-      details: "Demande d'inscription refusée par l'administration",
-      timestamp: new Date().toISOString(),
-    };
-
-    const nextLogs = [newAuditLog, ...auditLogs];
-    setUsers(updatedUsers);
-    setAuditLogs(nextLogs);
-
-    let nextCurrent = currentUser;
-    if (currentUser?.id === userId) {
-      nextCurrent = { ...currentUser, status: "REJECTED" };
-      setCurrentUser(nextCurrent);
+  /**
+   * Rejet d'un utilisateur par un Admin (Envoyé au serveur centralisé)
+   */
+  const rejectUser = async (userId: string) => {
+    try {
+      await fetch("/api/auth/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          action: "REJECT",
+          adminId: currentUser?.id,
+          adminName: currentUser?.full_name,
+        }),
+      });
+    } catch (err) {
+      console.error("[AuthContext] Error rejecting user:", err);
     }
-
-    saveState(nextCurrent, updatedUsers, nextLogs);
+    await refreshUsers();
   };
 
   if (!mounted) {
@@ -287,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerUser,
         approveUser,
         rejectUser,
+        refreshUsers,
       }}
     >
       {children}
