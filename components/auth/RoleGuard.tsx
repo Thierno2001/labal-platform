@@ -57,7 +57,7 @@ export function RoleGuard({
     );
   }
 
-  // 2. ACCOUNT PENDING APPROVAL (WITH AUTOMATIC CODE UNLOCK)
+  // 2. ACCOUNT PENDING APPROVAL (WITH SUPERVISOR CODE UNLOCK — NO SENSITIVE HINTS)
   if (requireApproved && currentUser.status === "PENDING") {
     const handleUnlock = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -66,7 +66,7 @@ export function RoleGuard({
       try {
         const res = await validatePendingWithCode(accessCode);
         if (!res.success) {
-          setCodeError(res.message || "Code d'accès invalide.");
+          setCodeError(res.message || "Code d'activation invalide.");
         }
       } finally {
         setValidating(false);
@@ -80,28 +80,29 @@ export function RoleGuard({
             <Clock className="w-8 h-8" />
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
-            ⏳ Statut : En attente de validation
+            ⏳ Statut : En attente d&apos;activation
           </div>
           <h2 className="text-2xl font-black text-labal-deep tracking-tight">
             Activation du Compte Enquêteur
           </h2>
           <p className="text-xs sm:text-sm text-labal-gray-dark font-medium leading-relaxed">
-            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong> ({currentUser.commune_affectation}). Vous pouvez activer votre compte immédiatement avec votre <strong>Code d&apos;Accès Terrain</strong> sans attendre un administrateur :
+            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong> ({currentUser.commune_affectation}). Si votre superviseur vous a transmis un <strong>code d&apos;activation</strong>, saisissez-le ci-dessous pour débloquer votre accès immédiatement :
           </p>
 
-          <form onSubmit={handleUnlock} className="bg-labal-lime/10 p-4 rounded-2xl border border-labal-lime/40 text-left space-y-3">
+          <form onSubmit={handleUnlock} className="bg-labal-gray-light p-4 rounded-2xl border border-labal-deep/10 text-left space-y-3">
             <label className="flex items-center gap-1.5 text-xs font-black text-labal-deep">
               <KeyRound className="w-4 h-4 text-labal-lime" />
-              Saisir le Code d&apos;Accès Terrain Labal :
+              Code d&apos;activation transmis par votre superviseur :
             </label>
             <div className="flex gap-2">
               <input
-                type="text"
+                type="password"
+                autoComplete="off"
                 required
-                placeholder="Ex: LABAL2026"
+                placeholder="Saisissez votre code secret..."
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-labal-deep/20 bg-white text-xs font-bold uppercase tracking-wider text-labal-deep"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-labal-deep/20 bg-white text-xs font-bold tracking-wider text-labal-deep"
               />
               <button
                 type="submit"

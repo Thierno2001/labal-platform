@@ -18,6 +18,10 @@ import {
   KeyRound,
   Sparkles,
   ClipboardCheck,
+  Plus,
+  Copy,
+  Trash2,
+  Dices,
 } from "lucide-react";
 
 export default function AdminUsersPage() {
@@ -35,9 +39,11 @@ function AdminUsersContent() {
     auditLogs,
     dbSource,
     autoApproveAll,
-    defaultAccessCode,
+    accessCodes,
     approveUser,
     rejectUser,
+    createAccessCode,
+    revokeAccessCode,
     toggleAutoApproveAll,
     refreshUsers,
   } = useAuth();
@@ -45,7 +51,13 @@ function AdminUsersContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [newCodeInput, setNewCodeInput] = useState("");
   const [surveyCountsByEmail, setSurveyCountsByEmail] = useState<Record<string, number>>({});
+
+  const showNotice = (msg: string) => {
+    setSuccessNotice(msg);
+    setTimeout(() => setSuccessNotice(null), 4000);
+  };
 
   const loadSurveyCounts = useCallback(async () => {
     try {
@@ -105,25 +117,66 @@ function AdminUsersContent() {
 
   const handleApprove = async (userId: string, name: string) => {
     await approveUser(userId);
-    setSuccessNotice(`Le compte de ${name} a été approuvé avec succès.`);
-    setTimeout(() => setSuccessNotice(null), 4000);
+    showNotice(`Le compte de ${name} a été approuvé avec succès.`);
   };
 
   const handleReject = async (userId: string, name: string) => {
     await rejectUser(userId);
-    setSuccessNotice(`La demande de ${name} a été rejetée.`);
-    setTimeout(() => setSuccessNotice(null), 4000);
+    showNotice(`La demande de ${name} a été rejetée.`);
   };
 
   const handleToggleAutoApprove = async () => {
     const nextVal = !autoApproveAll;
     await toggleAutoApproveAll(nextVal);
-    setSuccessNotice(
+    showNotice(
       nextVal
-        ? "Mode d'auto-validation intégrale activé : toute nouvelle inscription est approuvée sans code."
-        : "Validation par Code d'Accès Terrain active (code requis pour l'activation immédiate)."
+        ? "Mode d'auto-validation ouverte activé : toute nouvelle inscription est approuvée sans code."
+        : "Validation par Code d'Activation active (code requis pour l'activation immédiate)."
     );
-    setTimeout(() => setSuccessNotice(null), 4000);
+  };
+
+  const handleCreateCustomCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newCodeInput.trim().toUpperCase();
+    if (clean.length < 4) {
+      alert("Veuillez saisir un code d'au moins 4 caractères.");
+      return;
+    }
+    const res = await createAccessCode(clean);
+    if (res.success) {
+      setNewCodeInput("");
+      showNotice(`Nouveau code d'activation créé : ${clean}`);
+    } else {
+      alert(res.error || "Erreur lors de la création du code.");
+    }
+  };
+
+  const handleGenerateRandomCode = async () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let suffix = "";
+    for (let i = 0; i < 4; i++) {
+      suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const generated = `LBL-${suffix}`;
+    const res = await createAccessCode(generated);
+    if (res.success) {
+      showNotice(`Code aléatoire généré et activé : ${generated}`);
+    }
+  };
+
+  const handleCopyCodeMessage = (code: string) => {
+    const message = `Plateforme Labal Guinée — Votre code d'activation Enquêteur est : ${code}`;
+    navigator.clipboard.writeText(message);
+    showNotice(`Code "${code}" copié ! Vous pouvez le coller dans WhatsApp ou par SMS.`);
+  };
+
+  const handleRevokeCode = async (code: string) => {
+    if (accessCodes.length <= 1) {
+      alert("Conservez au moins un code actif ou créez-en un nouveau avant de supprimer celui-ci.");
+      return;
+    }
+    await revokeAccessCode(code);
+    showNotice(`Le code "${code}" a été désactivé.`);
   };
 
   return (
@@ -142,10 +195,10 @@ function AdminUsersContent() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-labal-deep tracking-tight mt-1.5">
-              Gestion des Comptes & Auto-Validation Enquêteurs
+              Gestion des Comptes & Codes d&apos;Activation Enquêteurs
             </h1>
             <p className="text-xs sm:text-sm text-labal-gray-dark font-medium mt-0.5">
-              Validation sans intervention humaine par code terrain, suivi de productivité et audit de sécurité.
+              Créez et partagez vos codes d&apos;équipe pour l&apos;activation automatique sans intervention humaine.
             </p>
           </div>
 
@@ -168,42 +221,113 @@ function AdminUsersContent() {
           </div>
         </div>
 
-        {/* Panneau de Validation Automatique Sans Intervention Humaine */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-labal-lime/40 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-labal-lime/20 text-labal-deep text-xs font-black">
-                <Sparkles className="w-3.5 h-3.5 text-labal-lime" />
-                Validation Automatique Sans Intervention Humaine
-              </span>
-              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-lg bg-labal-deep text-white text-xs font-black tracking-wider">
-                <KeyRound className="w-3.5 h-3.5 text-labal-lime" />
-                Code Terrain : {defaultAccessCode}
-              </span>
-            </div>
-            <p className="text-xs text-labal-gray-dark leading-relaxed max-w-2xl">
-              Les enquêteurs qui saisissent le code <strong className="text-labal-deep">{defaultAccessCode}</strong> (ou utilisent une adresse <code className="bg-labal-gray-light px-1.5 py-0.5 rounded text-labal-deep font-bold">@labal-guinee.org</code>) lors de l&apos;inscription ont leur compte <strong>approuvé automatiquement et instantanément</strong> sans intervention d&apos;un administrateur.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 self-start lg:self-center bg-labal-gray-light p-3.5 rounded-2xl border border-labal-deep/10">
-            <div className="text-xs">
-              <p className="font-bold text-labal-deep">Auto-approbation ouverte (sans code)</p>
-              <p className="text-[0.65rem] text-labal-gray-dark">
-                {autoApproveAll ? "Activée : tout inscrit est approuvé" : "Désactivée : code terrain requis"}
+        {/* Panneau Superviseur : Création & Gestion des Codes d'Activation */}
+        <div className="bg-white p-6 rounded-3xl border border-labal-lime/40 shadow-xs space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-labal-deep/10 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-labal-lime/20 text-labal-deep text-xs font-black">
+                  <KeyRound className="w-3.5 h-3.5 text-labal-deep" />
+                  Codes d&apos;Activation Superviseur (Validation Automatique)
+                </span>
+              </div>
+              <p className="text-xs text-labal-gray-dark leading-relaxed max-w-2xl">
+                Créez un code unique ou par équipe (ex. par commune ou par campagne) et envoyez-le par WhatsApp/SMS à vos enquêteurs. Lorsqu&apos;un enquêteur saisit l&apos;un de ces codes à l&apos;inscription, son compte est <strong>validé automatiquement</strong>.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleToggleAutoApprove}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                autoApproveAll
-                  ? "bg-labal-lime text-labal-deep shadow-xs"
-                  : "bg-white text-labal-gray-dark border border-labal-deep/15 hover:text-labal-deep"
-              }`}
-            >
-              {autoApproveAll ? "Actif ✓" : "Activer"}
-            </button>
+
+            <div className="flex items-center gap-3 self-start lg:self-center bg-labal-gray-light p-3 rounded-2xl border border-labal-deep/10">
+              <div className="text-xs">
+                <p className="font-bold text-labal-deep">Validation ouverte (sans code)</p>
+                <p className="text-[0.65rem] text-labal-gray-dark">
+                  {autoApproveAll ? "Active : aucun code demandé" : "Désactivée : code supervisé requis"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleAutoApprove}
+                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
+                  autoApproveAll
+                    ? "bg-labal-lime text-labal-deep shadow-xs"
+                    : "bg-white text-labal-gray-dark border border-labal-deep/15 hover:text-labal-deep"
+                }`}
+              >
+                {autoApproveAll ? "Actif ✓" : "Activer"}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            {/* Liste des codes actifs */}
+            <div className="space-y-2.5">
+              <span className="text-xs font-black text-labal-deep uppercase tracking-wider block">
+                Codes d&apos;activation actifs ({accessCodes.length}) :
+              </span>
+              <div className="flex flex-wrap gap-2.5">
+                {accessCodes.map((code) => (
+                  <div
+                    key={code}
+                    className="inline-flex items-center gap-2 bg-labal-deep text-white pl-3.5 pr-2 py-2 rounded-xl text-xs font-black tracking-wider shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-labal-lime" />
+                    <span>{code}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCodeMessage(code)}
+                      className="p-1.5 bg-white/15 hover:bg-white/25 rounded-lg text-white transition-colors"
+                      title="Copier le message d'invitation pour WhatsApp / SMS"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    {accessCodes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRevokeCode(code)}
+                        className="p-1.5 bg-red-500/30 hover:bg-red-500/60 rounded-lg text-white transition-colors"
+                        title="Désactiver et supprimer ce code"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[0.7rem] text-labal-gray-dark">
+                Cliquez sur l&apos;icône de copie pour copier le message prêt à envoyer par WhatsApp à vos agents.
+              </p>
+            </div>
+
+            {/* Formulaire de création / génération de code */}
+            <form onSubmit={handleCreateCustomCode} className="bg-labal-gray-light p-4 rounded-2xl border border-labal-deep/10 space-y-3">
+              <label className="block text-xs font-black text-labal-deep">
+                Créer ou générer un nouveau code d&apos;équipe :
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="Ex: RATOMA-2026 ou EQUIPE-1"
+                  value={newCodeInput}
+                  onChange={(e) => setNewCodeInput(e.target.value)}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-labal-deep/20 bg-white text-xs font-bold uppercase tracking-wider text-labal-deep"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-labal-deep text-white font-bold text-xs rounded-xl hover:bg-labal-deep/90 transition-all"
+                >
+                  <Plus className="w-4 h-4 text-labal-lime" />
+                  Ajouter ce code
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateRandomCode}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/20 hover:bg-labal-lime/15 transition-all"
+                  title="Générer automatiquement un code aléatoire"
+                >
+                  <Dices className="w-4 h-4 text-labal-lime" />
+                  Aléatoire
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 
@@ -310,7 +434,7 @@ function AdminUsersContent() {
                 <CheckCircle2 className="w-12 h-12 text-labal-lime mx-auto" />
                 <h3 className="text-lg font-black text-labal-deep">Aucune demande d&apos;enquêteur en attente !</h3>
                 <p className="text-xs text-labal-gray-dark">
-                  Tous les comptes ont été validés (automatiquement via le code terrain <strong className="text-labal-deep">{defaultAccessCode}</strong> ou par un administrateur).
+                  Tous les comptes ont été examinés ou activés automatiquement via vos codes superviseur.
                 </p>
               </div>
             ) : (
@@ -462,12 +586,12 @@ function AdminUsersContent() {
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
-                        log.action === "USER_APPROVED"
+                        log.action === "USER_APPROVED" || (log.action as string) === "ACCESS_CODE_CREATED"
                           ? "bg-emerald-100 text-emerald-800"
                           : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {log.action === "USER_APPROVED" ? "✓" : "✕"}
+                      {log.action === "USER_APPROVED" || (log.action as string) === "ACCESS_CODE_CREATED" ? "✓" : "✕"}
                     </div>
                     <div>
                       <p className="font-bold text-labal-deep">

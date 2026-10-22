@@ -3,29 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import { INITIAL_USERS, INITIAL_AUDIT_LOGS } from "@/lib/auth/initialData";
 import type { UserProfile, AuditLog } from "@/lib/auth/types";
 
-// Codes d'accès officiels permettant la validation automatique sans intervention humaine
-const VALID_ACCESS_CODES = new Set([
-  "LABAL2026",
-  "LABAL-2026",
-  "CONAKRY2026",
-  "LABAL-GN",
-  (process.env.NEXT_PUBLIC_ENQUETEUR_ACCESS_CODE || "LABAL2026").toUpperCase().trim(),
-]);
-
-export function isValidAccessCode(code?: string | null, email?: string | null): boolean {
-  if (email && email.trim().toLowerCase().endsWith("@labal-guinee.org")) {
-    return true;
-  }
-  if (!code) return false;
-  return VALID_ACCESS_CODES.has(code.trim().toUpperCase());
-}
+// Liste dynamique des codes d'accès créés/activés par les superviseurs (Admin)
+let serverAccessCodes: string[] = [
+  (process.env.NEXT_PUBLIC_ENQUETEUR_ACCESS_CODE || "LABAL-GN-2026").toUpperCase().trim(),
+];
 
 // In-memory fallback shared store (for environments without Supabase DB connected)
 let serverUsersStore: UserProfile[] = [...INITIAL_USERS];
 let serverAuditStore: AuditLog[] = [...INITIAL_AUDIT_LOGS];
-// Option activable par l'admin pour valider 100% des inscriptions même sans code
 let autoApproveAllRegistrations = false;
-// Set d'emails auto-validés par code (au cas où la politique RLS Supabase bloque l'UPDATE anon)
 const autoApprovedEmails = new Set<string>();
 
 function getSupabaseUrl() {
@@ -56,8 +42,32 @@ function getSupabaseServerClient() {
 }
 
 /**
+ * Reconstruit la liste des codes actifs à partir des logs d'audit Supabase + mémoire serveur
+ */
+function syncCodesFromAuditLogs(logs: AuditLog[]) {
+  const codes = new Set<string>(serverAccessCodes);
+  // Parcourir du plus ancien au plus récent
+  const chronological = [...logs].reverse();
+  for (const log of chronological) {
+    if ((log.action as string) === "ACCESS_CODE_CREATED" && log.target_name) {
+      codes.add(log.target_name.trim().toUpperCase());
+    } else if ((log.action as string) === "ACCESS_CODE_REVOKED" && log.target_name) {
+      codes.delete(log.target_name.trim().toUpperCase());
+    }
+  }
+  serverAccessCodes = Array.from(codes);
+}
+
+function isValidAccessCode(code?: string | null): boolean {
+  if (!code) return false;
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return false;
+  return serverAccessCodes.includes(normalized);
+}
+
+/**
  * GET /api/auth/users
- * Récupère la liste consolidée de tous les utilisateurs et logs d'audit.
+ * Récupère la liste consolidée de tous les utilisateurs, logs d'audit et codes actifs.
  */
 export async function GET() {
   const isConfigured = checkSupabaseConfigured();
@@ -75,11 +85,14 @@ export async function GET() {
         .select("*")
         .order("timestamp", { ascending: false });
 
+      if (Array.isArray(dbLogs)) {
+        syncCodesFromAuditLogs(dbLogs as AuditLog[]);
+      }
+
       if (!profilesErr && dbProfiles) {
         const rawUsers = dbProfiles.length > 0 ? dbProfiles : INITIAL_USERS;
         const mergedUsers = rawUsers.map((u: UserProfile) =>
-          autoApprovedEmails.has(u.email.toLowerCase()) ||
-          u.email.toLowerCase().endsWith("@labal-guinee.org")
+          autoApprovedEmails.has(u.email.toLowerCase())
             ? { ...u, status: "APPROVED" as const }
             : u
         );
@@ -88,7 +101,7 @@ export async function GET() {
           auditLogs: dbLogs || INITIAL_AUDIT_LOGS,
           source: "supabase",
           autoApproveAll: autoApproveAllRegistrations,
-          defaultAccessCode: "LABAL2026",
+          accessCodes: serverAccessCodes,
         });
       } else if (profilesErr) {
         console.error("[API Auth GET Supabase Error]:", profilesErr);
@@ -103,7 +116,7 @@ export async function GET() {
     auditLogs: serverAuditStore,
     source: "server_memory",
     autoApproveAll: autoApproveAllRegistrations,
-    defaultAccessCode: "LABAL2026",
+    accessCodes: serverAccessCodes,
   });
 }
 
@@ -120,11 +133,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Données d'utilisateur invalides." }, { status: 400 });
     }
 
-    const shouldAutoApprove =
-      autoApproveAllRegistrations ||
-      newUser.status === "APPROVED" ||
-      isValidAccessCode(accessCode, newUser.email);
+    const isConfigured = checkSupabaseConfigured();
+    if (isConfigured) {
+      try {
+        const client = getSupabaseServerClient();
+        const { data: dbLogs } = await client
+          .from("audit_logs")
+          .select("*")
+          .order("timestamp", { ascending: false });
+        if (Array.isArray(dbLogs)) {
+          syncCodesFromAuditLogs(dbLogs as AuditLog[]);
+        }
+      } catch {
+        // ignore
+      }
+    }
 
+    const codeProvided = Boolean(accessCode && accessCode.trim().length > 0);
+    const codeIsValid = isValidAccessCode(accessCode);
+
+    // Si l'utilisateur a saisi un code mais qu'il est erroné, refuser explicitement pour qu'il corrige
+    if (codeProvided && !codeIsValid && !autoApproveAllRegistrations) {
+      return NextResponse.json(
+        {
+          error: "Le code d'accès saisi est invalide ou expiré. Vérifiez-le auprès de votre superviseur ou laissez ce champ vide pour une validation manuelle.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const shouldAutoApprove = autoApproveAllRegistrations || codeIsValid;
     const finalStatus = shouldAutoApprove ? "APPROVED" : "PENDING";
     const approvedAt = shouldAutoApprove ? new Date().toISOString() : null;
     const approvedBy = shouldAutoApprove ? "00000000-0000-0000-0000-000000000001" : null;
@@ -141,12 +179,9 @@ export async function POST(req: Request) {
       approved_at: approvedAt,
     };
 
-    const isConfigured = checkSupabaseConfigured();
-
     if (isConfigured) {
       const client = getSupabaseServerClient();
 
-      // 1. Try inserting with finalStatus ('APPROVED' or 'PENDING')
       let { data, error } = await client
         .from("profiles")
         .insert([
@@ -164,7 +199,7 @@ export async function POST(req: Request) {
         .select()
         .single();
 
-      // 2. Fallback if Supabase RLS policy anon_register_profile restricts INSERT to status = 'PENDING'
+      // Fallback si la politique RLS Supabase restreint l'INSERT à status = 'PENDING'
       if (error && shouldAutoApprove) {
         const retryInsert = await client
           .from("profiles")
@@ -183,7 +218,6 @@ export async function POST(req: Request) {
           .single();
 
         if (!retryInsert.error && retryInsert.data) {
-          // Try updating status to APPROVED
           const updateTry = await client
             .from("profiles")
             .update({
@@ -218,7 +252,7 @@ export async function POST(req: Request) {
               action: "USER_APPROVED",
               target_id: finalUser.id,
               target_name: finalUser.full_name,
-              details: `Validation automatique sans intervention humaine (${finalUser.commune_affectation})`,
+              details: `Validation automatique par code d'accès (${finalUser.commune_affectation})`,
             },
           ]);
         }
@@ -261,7 +295,7 @@ export async function POST(req: Request) {
         action: "USER_APPROVED",
         target_id: userToStore.id,
         target_name: userToStore.full_name,
-        details: `Validation automatique sans intervention humaine (${userToStore.commune_affectation})`,
+        details: `Validation automatique par code d'accès (${userToStore.commune_affectation})`,
         timestamp: new Date().toISOString(),
       };
       serverAuditStore = [autoLog, ...serverAuditStore];
@@ -281,13 +315,96 @@ export async function POST(req: Request) {
 
 /**
  * PATCH /api/auth/users
- * Approbation / Rejet Admin, Auto-validation par code d'accès, ou bascule du mode Auto-Approve.
+ * Approbation / Rejet Admin, création/révocation de codes d'accès par le superviseur, ou auto-validation par code.
  */
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { userId, userEmail, action, adminId, adminName, accessCode, autoApproveAll } = body;
+    const {
+      userId,
+      userEmail,
+      action,
+      adminId,
+      adminName,
+      accessCode,
+      autoApproveAll,
+    } = body;
 
+    const isConfigured = checkSupabaseConfigured();
+
+    // 1. Création d'un nouveau code d'accès par le Superviseur / Admin
+    if (action === "CREATE_ACCESS_CODE") {
+      const cleanNewCode = (accessCode || "").trim().toUpperCase();
+      if (!cleanNewCode || cleanNewCode.length < 4) {
+        return NextResponse.json(
+          { error: "Le code doit contenir au moins 4 caractères." },
+          { status: 400 }
+        );
+      }
+      if (!serverAccessCodes.includes(cleanNewCode)) {
+        serverAccessCodes = [cleanNewCode, ...serverAccessCodes];
+      }
+
+      if (isConfigured) {
+        const client = getSupabaseServerClient();
+        await client.from("audit_logs").insert([
+          {
+            actor_id: adminId || "00000000-0000-0000-0000-000000000001",
+            actor_name: adminName || "Administrateur",
+            action: "ACCESS_CODE_CREATED",
+            target_id: adminId || "00000000-0000-0000-0000-000000000001",
+            target_name: cleanNewCode,
+            details: "Création d'un nouveau code d'accès enquêteur",
+          },
+        ]);
+      } else {
+        serverAuditStore = [
+          {
+            id: `audit-${Date.now()}`,
+            actor_id: adminId || "admin-1",
+            actor_name: adminName || "Administrateur",
+            action: "USER_APPROVED",
+            target_id: "CODE",
+            target_name: cleanNewCode,
+            details: "Création d'un nouveau code d'accès enquêteur",
+            timestamp: new Date().toISOString(),
+          },
+          ...serverAuditStore,
+        ];
+      }
+
+      return NextResponse.json({
+        success: true,
+        accessCodes: serverAccessCodes,
+      });
+    }
+
+    // 2. Suppression / Révocation d'un code d'accès par le Superviseur / Admin
+    if (action === "REVOKE_ACCESS_CODE") {
+      const cleanTarget = (accessCode || "").trim().toUpperCase();
+      serverAccessCodes = serverAccessCodes.filter((c) => c !== cleanTarget);
+
+      if (isConfigured) {
+        const client = getSupabaseServerClient();
+        await client.from("audit_logs").insert([
+          {
+            actor_id: adminId || "00000000-0000-0000-0000-000000000001",
+            actor_name: adminName || "Administrateur",
+            action: "ACCESS_CODE_REVOKED",
+            target_id: adminId || "00000000-0000-0000-0000-000000000001",
+            target_name: cleanTarget,
+            details: "Révocation d'un code d'accès enquêteur",
+          },
+        ]);
+      }
+
+      return NextResponse.json({
+        success: true,
+        accessCodes: serverAccessCodes,
+      });
+    }
+
+    // 3. Bascule du mode d'auto-approbation ouverte
     if (action === "TOGGLE_AUTO_APPROVE") {
       autoApproveAllRegistrations = Boolean(autoApproveAll);
       return NextResponse.json({
@@ -296,10 +413,29 @@ export async function PATCH(req: Request) {
       });
     }
 
+    // 4. Auto-validation d'un compte en attente par saisie d'un code valide
     if (action === "SELF_APPROVE_CODE") {
-      if (!isValidAccessCode(accessCode, userEmail)) {
+      if (isConfigured) {
+        try {
+          const client = getSupabaseServerClient();
+          const { data: dbLogs } = await client
+            .from("audit_logs")
+            .select("*")
+            .order("timestamp", { ascending: false });
+          if (Array.isArray(dbLogs)) {
+            syncCodesFromAuditLogs(dbLogs as AuditLog[]);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!isValidAccessCode(accessCode)) {
         return NextResponse.json(
-          { success: false, error: "Code d'accès invalide. Vérifiez le code auprès de votre coordinateur Labal." },
+          {
+            success: false,
+            error: "Code d'activation invalide ou expiré. Veuillez demander le code actif à votre superviseur.",
+          },
           { status: 403 }
         );
       }
@@ -316,9 +452,8 @@ export async function PATCH(req: Request) {
       action === "APPROVE" || action === "SELF_APPROVE_CODE" ? "APPROVED" : "REJECTED";
     const actorNameFinal =
       action === "SELF_APPROVE_CODE"
-        ? "Système Auto-Validation (Code Terrain)"
+        ? "Système Auto-Validation (Code Superviseur)"
         : adminName || "Marseille Camara";
-    const isConfigured = checkSupabaseConfigured();
 
     if (isConfigured) {
       const client = getSupabaseServerClient();
@@ -344,7 +479,7 @@ export async function PATCH(req: Request) {
             target_name: updatedProfile.full_name,
             details:
               action === "SELF_APPROVE_CODE"
-                ? `Auto-validation par code d'accès terrain (${updatedProfile.commune_affectation})`
+                ? `Auto-validation par code superviseur (${updatedProfile.commune_affectation})`
                 : `Action ${action} pour le compte (${updatedProfile.commune_affectation})`,
           },
         ]);
@@ -373,7 +508,7 @@ export async function PATCH(req: Request) {
         target_name: targetUser.full_name,
         details:
           action === "SELF_APPROVE_CODE"
-            ? `Auto-validation par code d'accès terrain (${targetUser.commune_affectation})`
+            ? `Auto-validation par code superviseur (${targetUser.commune_affectation})`
             : `Action ${action} pour le compte (${targetUser.commune_affectation})`,
         timestamp: new Date().toISOString(),
       };
