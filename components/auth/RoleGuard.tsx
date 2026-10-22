@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { UserRole } from "@/lib/auth/types";
 import Link from "next/link";
-import { ShieldAlert, Clock, ArrowLeft, Lock, LogIn } from "lucide-react";
+import { ShieldAlert, Clock, ArrowLeft, Lock, LogIn, KeyRound, CheckCircle2 } from "lucide-react";
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -16,7 +17,10 @@ export function RoleGuard({
   allowedRoles = ["ADMIN", "ENQUETEUR"],
   requireApproved = true,
 }: RoleGuardProps) {
-  const { currentUser } = useAuth();
+  const { currentUser, validatePendingWithCode } = useAuth();
+  const [accessCode, setAccessCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
 
   // 1. NOT LOGGED IN
   if (!currentUser) {
@@ -53,8 +57,22 @@ export function RoleGuard({
     );
   }
 
-  // 2. ACCOUNT PENDING APPROVAL
+  // 2. ACCOUNT PENDING APPROVAL (WITH AUTOMATIC CODE UNLOCK)
   if (requireApproved && currentUser.status === "PENDING") {
+    const handleUnlock = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setCodeError(null);
+      setValidating(true);
+      try {
+        const res = await validatePendingWithCode(accessCode);
+        if (!res.success) {
+          setCodeError(res.message || "Code d'accès invalide.");
+        }
+      } finally {
+        setValidating(false);
+      }
+    };
+
     return (
       <div className="min-h-[75vh] flex items-center justify-center p-4">
         <div className="bg-white p-8 sm:p-10 rounded-3xl border border-amber-200 shadow-2xl max-w-lg w-full text-center space-y-5">
@@ -65,20 +83,45 @@ export function RoleGuard({
             ⏳ Statut : En attente de validation
           </div>
           <h2 className="text-2xl font-black text-labal-deep tracking-tight">
-            Validation Administrateur Requise
+            Activation du Compte Enquêteur
           </h2>
           <p className="text-xs sm:text-sm text-labal-gray-dark font-medium leading-relaxed">
-            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong>. Votre demande d&apos;inscription pour la zone <strong className="text-labal-deep">{currentUser.commune_affectation}</strong> est en cours d&apos;examen.
+            Bienvenue <strong className="text-labal-deep">{currentUser.full_name}</strong> ({currentUser.commune_affectation}). Vous pouvez activer votre compte immédiatement avec votre <strong>Code d&apos;Accès Terrain</strong> sans attendre un administrateur :
           </p>
-          <div className="bg-amber-50/70 p-4 rounded-2xl text-left border border-amber-200 text-xs text-amber-900 space-y-1">
-            <p className="font-bold">Politique de Sécurité Zero-Trust :</p>
-            <p>Seuls les enquêteurs approuvés par l&apos;administration peuvent enregistrer des données sur le terrain.</p>
-          </div>
+
+          <form onSubmit={handleUnlock} className="bg-labal-lime/10 p-4 rounded-2xl border border-labal-lime/40 text-left space-y-3">
+            <label className="flex items-center gap-1.5 text-xs font-black text-labal-deep">
+              <KeyRound className="w-4 h-4 text-labal-lime" />
+              Saisir le Code d&apos;Accès Terrain Labal :
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                required
+                placeholder="Ex: LABAL2026"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-labal-deep/20 bg-white text-xs font-bold uppercase tracking-wider text-labal-deep"
+              />
+              <button
+                type="submit"
+                disabled={validating}
+                className="px-4 py-2.5 bg-labal-deep text-white font-bold text-xs rounded-xl hover:bg-labal-deep/90 transition-all inline-flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-labal-lime" />
+                {validating ? "Vérification..." : "Activer"}
+              </button>
+            </div>
+            {codeError && (
+              <p className="text-xs font-bold text-red-600">{codeError}</p>
+            )}
+          </form>
+
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 w-full py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs"
+            className="inline-flex items-center justify-center gap-2 w-full py-3 bg-labal-gray-light text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/10 hover:bg-labal-gray-medium transition-all"
           >
-            <ArrowLeft className="w-4 h-4 text-labal-lime" />
+            <ArrowLeft className="w-4 h-4" />
             Retourner à l&apos;Accueil
           </Link>
         </div>
@@ -96,27 +139,23 @@ export function RoleGuard({
           </div>
 
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-black border border-red-200 uppercase tracking-wide">
-            🚫 ERREUR 403 — ACCÈS REFUSÉ
+            🚫 ERREUR 403 — ACCÈS RÉSERVÉ AUX ADMINISTRATEURS
           </div>
 
           <h2 className="text-2xl font-black text-labal-deep tracking-tight">
-            Droits d&apos;accès Insuffisants
+            Espace Administrateur Uniquement
           </h2>
 
           <p className="text-xs sm:text-sm text-labal-gray-dark leading-relaxed">
-            Vous êtes connecté en tant qu&apos;<strong className="text-labal-deep">Enquêteur Terrain ({currentUser.full_name})</strong>. En accord avec la politique de confidentialité, le Tableau de Bord décisionnel et la gestion des utilisateurs sont strictly réservés aux <strong className="text-labal-deep">Administrateurs</strong>.
+            Vous êtes connecté en tant qu&apos;<strong className="text-labal-deep">Enquêteur Terrain ({currentUser.full_name})</strong>. Le Tableau de Bord stratégique global est réservé aux <strong className="text-labal-deep">Administrateurs</strong>, mais vous disposez de votre propre espace de suivi <strong className="text-labal-deep">« Mes Enquêtes »</strong>.
           </p>
-
-          <div className="p-4 bg-labal-gray-light rounded-2xl text-xs text-labal-deep border border-labal-deep/10 font-bold">
-            Votre profil a accès uniquement à la collecte des enquêtes terrain (PME, Ménages, Transit, Mairies).
-          </div>
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/enquete/pme"
+              href="/mes-enquetes"
               className="px-6 py-3.5 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all text-center"
             >
-              Accéder aux Formulaires d&apos;Enquête
+              Voir Mes Enquêtes Réalisées
             </Link>
             <Link
               href="/"

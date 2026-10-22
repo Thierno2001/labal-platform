@@ -1,48 +1,64 @@
 import { z } from "zod";
 
+const optStr = z.string().optional().nullable().or(z.literal(""));
+const optNum = z
+  .union([z.number(), z.string()])
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    const n = Number(val);
+    return isNaN(n) ? undefined : n;
+  });
+
 export const transitSchema = z.object({
-  email_responsable: z.string().email("Email invalide").optional().or(z.literal("")),
+  email_responsable: optStr,
   nom_site: z.string().min(1, "Le nom du site est requis"),
-  statut_site: z.string().min(1, "Le statut est requis"),
-  entite_gestionnaire: z.string().min(1, "L'entité gestionnaire est requise"),
-  commune: z.string().min(1, "La commune est requise"),
-  quartier_repere: z.string().optional(),
-  capacite_caissons: z.coerce.number().optional(),
-  cloture_dalle: z.enum(["true", "false"]).optional(),
+  statut_site: optStr,
+  entite_gestionnaire: optStr,
+  commune: optStr,
+  quartier_repere: optStr,
+  capacite_caissons: optNum,
+  cloture_dalle: optStr,
   equipements: z.array(z.string()).default([]),
-  presence_pont_bascule: z.enum(["true", "false"]).optional(),
-  tri_sur_place: z.enum(["true", "false"]).optional(),
+  presence_pont_bascule: optStr,
+  tri_sur_place: optStr,
   filieres_triees: z.array(z.string()).default([]),
-  nb_trieurs: z.coerce.number().optional(),
-  acheteurs: z.string().optional(),
-  nb_pme_clientes: z.coerce.number().optional(),
-  nb_rotations_quotidiennes: z.coerce.number().optional(),
-  tranches_horaires_pointe: z.string().optional(),
-  acces_limite_agrees: z.enum(["true", "false"]).optional(),
-  redevance_deversement: z.enum(["true", "false"]).optional(),
-  refus_acces: z.enum(["true", "false"]).optional(),
+  nb_trieurs: optNum,
+  acheteurs: optStr,
+  nb_pme_clientes: optNum,
+  nb_rotations_quotidiennes: optNum,
+  tranches_horaires_pointe: optStr,
+  acces_limite_agrees: optStr,
+  redevance_deversement: optStr,
+  refus_acces: optStr,
   causes_refus: z.array(z.string()).default([]),
-  outil_enregistrement: z.string().optional(),
+  outil_enregistrement: optStr,
   donnees_consignees: z.array(z.string()).default([]),
-  frequence_rotation: z.string().optional(),
-  prestataire_transporteur: z.string().optional(),
-  frequence_saturation: z.string().optional(),
-  consequences_environnementales: z.string().optional(),
+  frequence_rotation: optStr,
+  prestataire_transporteur: optStr,
+  frequence_saturation: optStr,
+  consequences_environnementales: optStr,
   causes_blocage: z.array(z.string()).default([]),
-  duree_max_blocage: z.string().optional(),
-  canal_alerte_mairie: z.string().optional(),
-  delai_reaction_communal: z.string().optional(),
-  encaissements_especes_vs_mobile: z.string().optional(),
-  litiges_caisse: z.enum(["true", "false"]).optional(),
+  duree_max_blocage: optStr,
+  canal_alerte_mairie: optStr,
+  delai_reaction_communal: optStr,
+  encaissements_especes_vs_mobile: optStr,
+  litiges_caisse: optStr,
   dotation_epi: z.array(z.string()).default([]),
-  nuisances_vecteurs: z.string().optional(),
-  local_securise_courant: z.enum(["true", "false"]).optional(),
-  qualite_reseau_4g: z.string().optional(),
-  smartphone_fonction: z.enum(["true", "false"]).optional(),
-  bouton_alerte_sos: z.enum(["true", "false"]).optional(),
-  suivi_gps_camions: z.enum(["true", "false"]).optional(),
-  contact_responsable: z.string().optional(),
-  suggestions_amenagement: z.string().optional(),
+  nuisances_vecteurs: optStr,
+  local_securise_courant: optStr,
+  qualite_reseau_4g: optStr,
+  smartphone_fonction: optStr,
+  bouton_alerte_sos: optStr,
+  suivi_gps_camions: optStr,
+  contact_responsable: optStr,
+  suggestions_amenagement: optStr,
+
+  // Traçabilité Enquêteur
+  enqueteur_id: optStr,
+  enqueteur_nom: optStr,
+  enqueteur_email: optStr,
 });
 
 export type TransitFormData = z.infer<typeof transitSchema>;

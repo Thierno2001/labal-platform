@@ -62,7 +62,7 @@ function DashboardContent() {
   const fetchRealData = async () => {
     setLoading(true);
     try {
-      const communeParam = selectedCommune !== "all" ? `?commune=${encodeURIComponent(selectedCommune)}` : "";
+      const communeParam = selectedCommune !== "all" ? `?commune=${encodeURIComponent(selectedCommune)}&limit=5000` : "?limit=5000";
       
       const [pmeRes, menagesRes, transitRes, autoritesRes] = await Promise.all([
         fetch(`/api/enquetes/pme${communeParam}`).then((r) => r.json()),

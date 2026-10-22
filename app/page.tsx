@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ArrowRight,
   ClipboardList,
+  ClipboardCheck,
   ShieldCheck,
   Sparkles,
   MapPin,
@@ -127,7 +128,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 /* LOGGED IN USER BUTTONS */
-                <div className="pt-2 flex flex-col sm:flex-row gap-3.5 justify-center lg:justify-start">
+                <div className="pt-2 flex flex-col sm:flex-row flex-wrap gap-3.5 justify-center lg:justify-start">
                   {isUserApproved && (
                     <Link
                       href="/enquete/pme"
@@ -136,6 +137,16 @@ export default function HomePage() {
                       <ClipboardList className="w-5 h-5 text-labal-lime group-hover:rotate-6 transition-transform" />
                       Démarrer une enquête
                       <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  )}
+
+                  {isUserApproved && (
+                    <Link
+                      href="/mes-enquetes"
+                      className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-labal-lime/15 text-labal-deep font-black rounded-2xl border-2 border-labal-lime/40 hover:bg-labal-lime/25 transition-all shadow-xs text-sm"
+                    >
+                      <ClipboardCheck className="w-5 h-5 text-labal-deep" />
+                      Mes Enquêtes Réalisées
                     </Link>
                   )}
 

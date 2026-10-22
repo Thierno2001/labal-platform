@@ -4,8 +4,16 @@ import { pmeSchema } from "@/lib/schemas/pme.schema";
 import { menagesSchema } from "@/lib/schemas/menages.schema";
 import { transitSchema } from "@/lib/schemas/transit.schema";
 import { autoritesSchema } from "@/lib/schemas/autorites.schema";
+import {
+  roleToTable,
+  serverEnquetesStore,
+  surveyAttributionMap,
+  getSupabaseConfig,
+  fetchAllEnquetesByRole,
+  type SurveyRole,
+} from "@/lib/supabase/enquetesStore";
 
-// Strict schemas for server-side validation (preventing Mass Assignment Injection)
+// Strict schemas for server-side validation
 const roleSchemas: Record<string, z.ZodSchema> = {
   pme: pmeSchema,
   menages: menagesSchema,
@@ -13,49 +21,89 @@ const roleSchemas: Record<string, z.ZodSchema> = {
   autorites: autoritesSchema,
 };
 
-const roleToTable: Record<string, string> = {
-  pme: "enquetes_pme",
-  menages: "enquetes_menages",
-  transit: "enquetes_transit",
-  autorites: "enquetes_autorites",
-};
-
+// Exact boolean columns matching supabase/schema.sql
 const booleanFields = new Set([
-  "dessert_commerces", "refus_menages", "zone_geographique_definie", 
-  "refus_collecteur", "demandes_en_attente", "systeme_incidents", 
-  "accord_recontact", "a_change_collecteur", "bacs_debordants_7_jours", 
-  "interet_bouton_commande", "notification_approche", "suivi_carte_temps_reel", 
-  "tri_actuel", "pret_modules_video", "recu_papier", "conflit_paiement", 
-  "possession_smartphone", "pret_installer_labal", "cloture_dalle", 
-  "presence_pont_bascule", "tri_sur_place", "acces_limite_agrees", 
-  "refus_acces", "systeme_pesee", "registre_entrees_sorties", 
-  "conventions_pme_signees", "tri_source_exige", "sanctions_non_respect", 
-  "espace_transit_dedie", "interet_plateforme_labal", "pret_integrer_projet_pilote"
+  // PME (note: demandes_en_attente is TEXT CHECK ('Oui', 'Non') in schema.sql)
+  "dessert_commerces",
+  "refus_menages",
+  "zone_geographique_definie",
+  "refus_collecteur",
+  "systeme_incidents",
+  "accord_recontact",
+  // Ménages
+  "a_change_collecteur",
+  "bacs_debordants_7_jours",
+  "interet_bouton_commande",
+  "notification_approche",
+  "suivi_carte_temps_reel",
+  "tri_actuel",
+  "pret_modules_video",
+  "recu_papier",
+  "conflit_paiement",
+  "possession_smartphone",
+  "pret_installer_labal",
+  // Transit
+  "cloture_dalle",
+  "presence_pont_bascule",
+  "tri_sur_place",
+  "acces_limite_agrees",
+  "redevance_deversement",
+  "refus_acces",
+  "litiges_caisse",
+  "local_securise_courant",
+  "smartphone_fonction",
+  "bouton_alerte_sos",
+  "suivi_gps_camions",
+  // Autorités
+  "convention_conaag",
+  "cahier_charges",
+  "zonage_exclusif",
+  "disponibilite_sig",
+  "capacite_4_transferts",
+  "controles_inopines",
+  "sanctions_recentes",
+  "synergie_sanita",
+  "volonte_mobile_money_obligatoire",
+  "correlation_ordures_maladies",
+  "ordinateurs_mairie",
+  "smartphone_agents_terrain",
+  "point_focal_designe",
 ]);
 
+// Exact numeric columns matching supabase/schema.sql
 const numericFields = new Set([
-  "annee_creation", "nb_commerces", "duree_tournee_heures", "voyages_par_jour",
-  "nb_personnes_foyer", "nb_sacs_semaine", "montant_mensuel_gnf",
-  "capacite_caissons", "nb_trieurs", "nb_pme_clientes", "nb_rotations_quotidiennes",
-  "redevance_deversement", "tarif_decharge",
-  "annee_prise_fonction", "budget_annuel_assainissement", "nb_pme_agreees", "nb_zst_fonctionnels"
+  // PME
+  "annee_creation",
+  "nb_commerces",
+  "duree_tournee_heures",
+  "voyages_par_jour",
+  // Ménages
+  "nb_personnes_foyer",
+  "nb_sacs_semaine",
+  "montant_mensuel_gnf",
+  // Transit
+  "capacite_caissons",
+  "nb_trieurs",
+  "nb_pme_clientes",
+  "nb_rotations_quotidiennes",
+  // Autorités
+  "nb_pme_conventionnees",
+  "nb_points_noirs",
 ]);
 
 function sanitizePayload(data: Record<string, any>) {
   const clean: Record<string, any> = {};
 
   for (const [key, val] of Object.entries(data)) {
-    // 1. Handle null / undefined
     if (val === null || val === undefined) {
       clean[key] = null;
       continue;
     }
 
-    // 2. Handle strings (convert empty or whitespace strings to null)
     if (typeof val === "string") {
       const trimmed = val.trim();
       if (trimmed === "") {
-        clean[key] = null;
+        clean[key] = booleanFields.has(key) ? false : null;
         continue;
       }
 
@@ -76,19 +124,16 @@ function sanitizePayload(data: Record<string, any>) {
       continue;
     }
 
-    // 3. Handle numbers directly
     if (typeof val === "number") {
       clean[key] = isNaN(val) ? null : val;
       continue;
     }
 
-    // 4. Handle booleans directly
     if (typeof val === "boolean") {
       clean[key] = val;
       continue;
     }
 
-    // 5. Arrays / Objects (JSONB columns)
     clean[key] = val;
   }
 
@@ -112,7 +157,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
-    // Strict schema validation (reject unmapped payload attributes)
     const schema = roleSchemas[role];
     const result = schema.safeParse(body);
     if (!result.success) {
@@ -123,29 +167,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const sanitizedData = sanitizePayload(result.data);
+    const { enqueteur_id, enqueteur_nom, enqueteur_email, ...coreDbFields } = sanitizedData;
 
-    // Try to insert into Supabase if configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { supabaseUrl, supabaseKey, isConfigured } = getSupabaseConfig();
 
-    if (supabaseUrl && supabaseKey && !supabaseUrl.includes("placeholder")) {
+    if (isConfigured) {
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      });
 
-      const tableName = roleToTable[role];
-      const { data, error } = await supabase
+      const tableName = roleToTable[role as SurveyRole];
+
+      // 1. Try inserting with enqueteur_* columns included
+      const payloadWithEnqueteur = {
+        ...coreDbFields,
+        ...(enqueteur_id ? { enqueteur_id } : {}),
+        ...(enqueteur_nom ? { enqueteur_nom } : {}),
+        ...(enqueteur_email ? { enqueteur_email } : {}),
+      };
+
+      let { data, error } = await supabase
         .from(tableName)
-        .insert(sanitizedData)
+        .insert(payloadWithEnqueteur)
         .select("id, created_at")
         .single();
 
-      if (error) {
+      // 2. Fallback: if the live Supabase table doesn't yet have enqueteur_* columns, insert coreDbFields
+      if (
+        error &&
+        (error.code === "PGRST204" ||
+          error.code === "42703" ||
+          error.message?.includes("enqueteur_"))
+      ) {
+        const retryRes = await supabase
+          .from(tableName)
+          .insert(coreDbFields)
+          .select("id, created_at")
+          .single();
+        data = retryRes.data;
+        error = retryRes.error;
+      }
+
+      if (error || !data) {
         console.error(`[API] Erreur Supabase ${tableName}:`, error);
         return NextResponse.json(
-          { error: `Erreur d'enregistrement DB: ${error.message}` },
+          { error: `Erreur d'enregistrement DB: ${error?.message || "Erreur inconnue"}` },
           { status: 500 }
         );
       }
+
+      // Store attribution in memory map as well
+      if (enqueteur_id || enqueteur_nom || enqueteur_email) {
+        surveyAttributionMap.set(data.id, {
+          enqueteur_id,
+          enqueteur_nom,
+          enqueteur_email,
+        });
+      }
+
+      const fullRecord = {
+        id: data.id,
+        created_at: data.created_at,
+        ...sanitizedData,
+      };
+      serverEnquetesStore[role as SurveyRole] = [
+        fullRecord,
+        ...serverEnquetesStore[role as SurveyRole],
+      ];
 
       return NextResponse.json(
         {
@@ -158,13 +247,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Fallback: local mode
+    // Fallback: local server memory mode
+    const localId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    const localRecord = {
+      id: localId,
+      created_at: createdAt,
+      ...sanitizedData,
+    };
+    serverEnquetesStore[role as SurveyRole] = [
+      localRecord,
+      ...serverEnquetesStore[role as SurveyRole],
+    ];
+
     return NextResponse.json(
       {
         success: true,
-        message: `Enquête ${role} reçue (mode local — Supabase non configuré).`,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
+        message: `Enquête ${role} enregistrée (mode mémoire serveur).`,
+        id: localId,
+        created_at: createdAt,
       },
       { status: 201 }
     );
@@ -181,67 +282,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { role } = await params;
 
-    if (!roleToTable[role]) {
+    if (!roleToTable[role as SurveyRole]) {
       return NextResponse.json(
         { error: `Rôle invalide: ${role}` },
         { status: 400 }
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = new URL(request.url);
+    const rawCommune = url.searchParams.get("commune");
+    const rawLimit = url.searchParams.get("limit") || "5000";
+    const rawOffset = url.searchParams.get("offset") || "0";
+    const rawEnqueteur = url.searchParams.get("enqueteur");
 
-    if (supabaseUrl && supabaseKey && !supabaseUrl.includes("placeholder")) {
-      const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    const limit = Math.min(Math.max(parseInt(rawLimit) || 5000, 1), 10000);
+    const offset = Math.max(parseInt(rawOffset) || 0, 0);
 
-      const url = new URL(request.url);
-      const rawCommune = url.searchParams.get("commune");
-      const rawLimit = url.searchParams.get("limit") || "100";
-      const rawOffset = url.searchParams.get("offset") || "0";
-
-      // Sanitize pagination bounds to prevent resource exhaustion / DoS
-      const limit = Math.min(Math.max(parseInt(rawLimit) || 10, 1), 500);
-      const offset = Math.max(parseInt(rawOffset) || 0, 0);
-
-      let query = supabase
-        .from(roleToTable[role])
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      if (rawCommune) {
-        // Sanitize string filter
-        const commune = rawCommune.trim();
-        if (role === "pme") {
-          query = query.contains("communes", JSON.stringify([commune]));
-        } else {
-          query = query.eq("commune", commune);
-        }
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        return NextResponse.json(
-          { error: "Erreur de lecture" },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        data,
-        total: count,
-        limit,
-        offset,
-      });
-    }
+    const result = await fetchAllEnquetesByRole(role as SurveyRole, {
+      commune: rawCommune,
+      limit,
+      offset,
+      enqueteur: rawEnqueteur,
+    });
 
     return NextResponse.json({
-      data: [],
-      total: 0,
-      limit: 100,
-      offset: 0,
+      data: result.data,
+      total: result.total,
+      limit,
+      offset,
+      source: result.source,
     });
   } catch (err) {
     console.error("[API] Erreur GET:", err);

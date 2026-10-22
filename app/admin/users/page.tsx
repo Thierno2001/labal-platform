@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import {
@@ -14,8 +14,10 @@ import {
   AlertTriangle,
   Search,
   Database,
-  Server,
   RefreshCw,
+  KeyRound,
+  Sparkles,
+  ClipboardCheck,
 } from "lucide-react";
 
 export default function AdminUsersPage() {
@@ -27,11 +29,56 @@ export default function AdminUsersPage() {
 }
 
 function AdminUsersContent() {
-  const { currentUser, users, auditLogs, dbSource, approveUser, rejectUser, refreshUsers } = useAuth();
+  const {
+    currentUser,
+    users,
+    auditLogs,
+    dbSource,
+    autoApproveAll,
+    defaultAccessCode,
+    approveUser,
+    rejectUser,
+    toggleAutoApproveAll,
+    refreshUsers,
+  } = useAuth();
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "audit">("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [surveyCountsByEmail, setSurveyCountsByEmail] = useState<Record<string, number>>({});
+
+  const loadSurveyCounts = useCallback(async () => {
+    try {
+      const [pmeRes, menRes, traRes, autRes] = await Promise.all([
+        fetch("/api/enquetes/pme?limit=5000").then((r) => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/enquetes/menages?limit=5000").then((r) => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/enquetes/transit?limit=5000").then((r) => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/enquetes/autorites?limit=5000").then((r) => r.json()).catch(() => ({ data: [] })),
+      ]);
+
+      const counts: Record<string, number> = {};
+      const allRows = [
+        ...(Array.isArray(pmeRes.data) ? pmeRes.data : []),
+        ...(Array.isArray(menRes.data) ? menRes.data : []),
+        ...(Array.isArray(traRes.data) ? traRes.data : []),
+        ...(Array.isArray(autRes.data) ? autRes.data : []),
+      ];
+
+      for (const row of allRows) {
+        const email = (row.enqueteur_email || row.email || "").toLowerCase().trim();
+        if (email) {
+          counts[email] = (counts[email] || 0) + 1;
+        }
+      }
+      setSurveyCountsByEmail(counts);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSurveyCounts();
+  }, [loadSurveyCounts]);
 
   const pendingUsers = users.filter((u) => u.status === "PENDING");
   const approvedUsers = users.filter((u) => u.status === "APPROVED");
@@ -52,7 +99,7 @@ function AdminUsersContent() {
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await refreshUsers();
+    await Promise.all([refreshUsers(), loadSurveyCounts()]);
     setTimeout(() => setIsRefreshing(false), 600);
   };
 
@@ -65,6 +112,17 @@ function AdminUsersContent() {
   const handleReject = async (userId: string, name: string) => {
     await rejectUser(userId);
     setSuccessNotice(`La demande de ${name} a été rejetée.`);
+    setTimeout(() => setSuccessNotice(null), 4000);
+  };
+
+  const handleToggleAutoApprove = async () => {
+    const nextVal = !autoApproveAll;
+    await toggleAutoApproveAll(nextVal);
+    setSuccessNotice(
+      nextVal
+        ? "Mode d'auto-validation intégrale activé : toute nouvelle inscription est approuvée sans code."
+        : "Validation par Code d'Accès Terrain active (code requis pour l'activation immédiate)."
+    );
     setTimeout(() => setSuccessNotice(null), 4000);
   };
 
@@ -84,10 +142,10 @@ function AdminUsersContent() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-labal-deep tracking-tight mt-1.5">
-              Gestion des Comptes & Approbation Enquêteurs
+              Gestion des Comptes & Auto-Validation Enquêteurs
             </h1>
             <p className="text-xs sm:text-sm text-labal-gray-dark font-medium mt-0.5">
-              Validation administrative Zero-Trust et suivi du registre d&apos;audit de sécurité.
+              Validation sans intervention humaine par code terrain, suivi de productivité et audit de sécurité.
             </p>
           </div>
 
@@ -104,9 +162,48 @@ function AdminUsersContent() {
               <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
               <div>
                 <p className="font-bold text-amber-900">{pendingUsers.length} Demande(s) en attente</p>
-                <p className="text-[0.65rem] text-amber-700">3 Administrateurs Actifs</p>
+                <p className="text-[0.65rem] text-amber-700">{approvedUsers.length} Comptes actifs</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Panneau de Validation Automatique Sans Intervention Humaine */}
+        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-labal-lime/40 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-labal-lime/20 text-labal-deep text-xs font-black">
+                <Sparkles className="w-3.5 h-3.5 text-labal-lime" />
+                Validation Automatique Sans Intervention Humaine
+              </span>
+              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-lg bg-labal-deep text-white text-xs font-black tracking-wider">
+                <KeyRound className="w-3.5 h-3.5 text-labal-lime" />
+                Code Terrain : {defaultAccessCode}
+              </span>
+            </div>
+            <p className="text-xs text-labal-gray-dark leading-relaxed max-w-2xl">
+              Les enquêteurs qui saisissent le code <strong className="text-labal-deep">{defaultAccessCode}</strong> (ou utilisent une adresse <code className="bg-labal-gray-light px-1.5 py-0.5 rounded text-labal-deep font-bold">@labal-guinee.org</code>) lors de l&apos;inscription ont leur compte <strong>approuvé automatiquement et instantanément</strong> sans intervention d&apos;un administrateur.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 self-start lg:self-center bg-labal-gray-light p-3.5 rounded-2xl border border-labal-deep/10">
+            <div className="text-xs">
+              <p className="font-bold text-labal-deep">Auto-approbation ouverte (sans code)</p>
+              <p className="text-[0.65rem] text-labal-gray-dark">
+                {autoApproveAll ? "Activée : tout inscrit est approuvé" : "Désactivée : code terrain requis"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleAutoApprove}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                autoApproveAll
+                  ? "bg-labal-lime text-labal-deep shadow-xs"
+                  : "bg-white text-labal-gray-dark border border-labal-deep/15 hover:text-labal-deep"
+              }`}
+            >
+              {autoApproveAll ? "Actif ✓" : "Activer"}
+            </button>
           </div>
         </div>
 
@@ -128,15 +225,12 @@ function AdminUsersContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-amber-900">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Supabase non configuré dans les variables d&apos;environnement Vercel !</span>
+                <span>Mode Mémoire Serveur Actif (Variables Supabase non détectées)</span>
               </div>
               <span className="text-[0.65rem] bg-amber-200 text-amber-900 font-bold px-2.5 py-0.5 rounded-full">
-                Mémoire Temporaire Vercel
+                Mémoire Serveur
               </span>
             </div>
-            <p className="text-[0.7rem] text-amber-800 leading-relaxed">
-              Pour que les demandes enregistrées depuis les téléphones soient conservées définitivement dans votre base de données Supabase, ajoutez <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-950">NEXT_PUBLIC_SUPABASE_URL</code> et <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-950">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> dans le tableau de bord Vercel (<em>Settings ➔ Environment Variables</em>).
-            </p>
           </div>
         )}
 
@@ -177,7 +271,7 @@ function AdminUsersContent() {
               }`}
             >
               <Users className="w-4 h-4" />
-              Comptes Validés
+              Comptes Validés & Enquêtes
               <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-[0.65rem]">
                 {approvedUsers.length}
               </span>
@@ -215,7 +309,9 @@ function AdminUsersContent() {
               <div className="bg-white p-12 rounded-3xl text-center border border-labal-deep/10 space-y-3">
                 <CheckCircle2 className="w-12 h-12 text-labal-lime mx-auto" />
                 <h3 className="text-lg font-black text-labal-deep">Aucune demande d&apos;enquêteur en attente !</h3>
-                <p className="text-xs text-labal-gray-dark">Tous les comptes d&apos;enquêteurs ont été examinés et validés par l&apos;administration.</p>
+                <p className="text-xs text-labal-gray-dark">
+                  Tous les comptes ont été validés (automatiquement via le code terrain <strong className="text-labal-deep">{defaultAccessCode}</strong> ou par un administrateur).
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -279,8 +375,8 @@ function AdminUsersContent() {
           <div className="bg-white rounded-3xl border border-labal-deep/10 overflow-hidden shadow-xs">
             <div className="p-6 border-b border-labal-deep/10 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-black text-labal-deep">Liste des Utilisateurs Validés</h3>
-                <p className="text-xs text-labal-gray-dark">Comprenant les 3 Administrateurs et les Enquêteurs Approuvés.</p>
+                <h3 className="text-base font-black text-labal-deep">Liste des Utilisateurs Validés & Enquêtes Réalisées</h3>
+                <p className="text-xs text-labal-gray-dark">Suivi des administrateurs et de la productivité des enquêteurs terrain.</p>
               </div>
               <span className="px-3 py-1 bg-labal-lime/20 text-labal-deep font-bold text-xs rounded-full">
                 {filteredApproved.length} comptes actifs
@@ -294,40 +390,50 @@ function AdminUsersContent() {
                     <th className="p-4">Utilisateur</th>
                     <th className="p-4">Rôle</th>
                     <th className="p-4">Commune</th>
+                    <th className="p-4">Enquêtes Réalisées</th>
                     <th className="p-4">Statut</th>
                     <th className="p-4">Date de Création</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-labal-deep/10">
-                  {filteredApproved.map((u) => (
-                    <tr key={u.id} className="hover:bg-labal-gray-light/50 transition-colors">
-                      <td className="p-4">
-                        <p className="font-bold text-labal-deep">{u.full_name}</p>
-                        <p className="text-[0.65rem] text-labal-gray-dark">{u.email}</p>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-md text-[0.65rem] font-bold ${
-                            u.role === "ADMIN"
-                              ? "bg-amber-100 text-amber-900 border border-amber-300"
-                              : "bg-labal-lime/20 text-labal-deep border border-labal-lime/40"
-                          }`}
-                        >
-                          {u.role === "ADMIN" ? "👑 Administrateur" : "👷 Enquêteur"}
-                        </span>
-                      </td>
-                      <td className="p-4 font-bold text-labal-deep">{u.commune_affectation}</td>
-                      <td className="p-4">
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Approuvé
-                        </span>
-                      </td>
-                      <td className="p-4 text-labal-gray-dark">
-                        {new Date(u.created_at).toLocaleDateString("fr-FR")}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredApproved.map((u) => {
+                    const count = surveyCountsByEmail[u.email.toLowerCase()] || 0;
+                    return (
+                      <tr key={u.id} className="hover:bg-labal-gray-light/50 transition-colors">
+                        <td className="p-4">
+                          <p className="font-bold text-labal-deep">{u.full_name}</p>
+                          <p className="text-[0.65rem] text-labal-gray-dark">{u.email}</p>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2.5 py-1 rounded-md text-[0.65rem] font-bold ${
+                              u.role === "ADMIN"
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-labal-lime/20 text-labal-deep border border-labal-lime/40"
+                            }`}
+                          >
+                            {u.role === "ADMIN" ? "👑 Administrateur" : "👷 Enquêteur"}
+                          </span>
+                        </td>
+                        <td className="p-4 font-bold text-labal-deep">{u.commune_affectation}</td>
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-labal-gray-light text-labal-deep font-black border border-labal-deep/10">
+                            <ClipboardCheck className="w-3.5 h-3.5 text-labal-lime" />
+                            {count} enquête(s)
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Approuvé
+                          </span>
+                        </td>
+                        <td className="p-4 text-labal-gray-dark">
+                          {new Date(u.created_at).toLocaleDateString("fr-FR")}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -343,7 +449,7 @@ function AdminUsersContent() {
                 Registre des Actions d&apos;Audit (Audit Logging OWASP)
               </h3>
               <p className="text-xs text-labal-gray-dark mt-0.5">
-                Historique inaltérable de chaque décision d&apos;approbation ou de rejet d&apos;accès.
+                Historique inaltérable de chaque décision d&apos;approbation automatique ou manuelle.
               </p>
             </div>
 

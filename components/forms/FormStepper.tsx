@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useCallback, useEffect, useMemo } from "react";
-import { Check, ChevronLeft, ChevronRight, Send, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, RotateCcw, Send, Sparkles } from "lucide-react";
 
 interface FormStepperProps {
   currentStep: number;
@@ -10,6 +10,8 @@ interface FormStepperProps {
   onNext: () => void;
   onPrev: () => void;
   onSubmit: () => void;
+  onReset?: () => void;
+  onStepClick?: (step: number) => void;
   isSubmitting?: boolean;
   isValid?: boolean;
   completedSteps: Set<number>;
@@ -23,6 +25,8 @@ export function FormStepper({
   onNext,
   onPrev,
   onSubmit,
+  onReset,
+  onStepClick,
   isSubmitting = false,
   completedSteps,
   children,
@@ -56,7 +60,7 @@ export function FormStepper({
       <div className="bg-white border border-labal-deep/10 rounded-2xl p-4 sm:p-6 mb-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-labal-lime/15 text-labal-deep border border-labal-lime/30">
                 Étape {currentStep + 1} sur {totalSteps}
               </span>
@@ -65,7 +69,18 @@ export function FormStepper({
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-3 self-end sm:self-auto">
+          <div className="flex items-center gap-2.5 self-end sm:self-auto">
+            {onReset && (
+              <button
+                type="button"
+                onClick={onReset}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                title="Effacer le brouillon et vider tous les champs du formulaire"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Vider le formulaire
+              </button>
+            )}
             <span className="text-xs font-semibold text-labal-gray-dark">
               Avancement
             </span>
@@ -87,7 +102,9 @@ export function FormStepper({
         <div className="stepper-container mt-4 pt-2 border-t border-labal-deep/5 justify-start sm:justify-center">
           {Array.from({ length: totalSteps }, (_, i) => (
             <div key={i} className="stepper-step">
-              <div
+              <button
+                type="button"
+                onClick={() => onStepClick?.(i)}
                 className={`stepper-circle cursor-pointer ${
                   i === currentStep
                     ? "stepper-circle--active"
@@ -102,7 +119,7 @@ export function FormStepper({
                 ) : (
                   i + 1
                 )}
-              </div>
+              </button>
               {i < totalSteps - 1 && (
                 <div
                   className={`stepper-line ${

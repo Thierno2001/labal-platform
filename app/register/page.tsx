@@ -4,10 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { COMMUNES } from "@/lib/constants";
-import { UserCheck, Clock, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import {
+  UserCheck,
+  Clock,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  Sparkles,
+  ClipboardList,
+} from "lucide-react";
 
 export default function RegisterPage() {
-  const { registerUser } = useAuth();
+  const { registerUser, autoApproveAll } = useAuth();
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -15,9 +24,11 @@ export default function RegisterPage() {
     phone: "+224 ",
     commune_affectation: "Kaloum",
     password: "",
+    accessCode: "",
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [wasAutoApproved, setWasAutoApproved] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,16 +37,18 @@ export default function RegisterPage() {
       return;
     }
 
-    await registerUser(
+    const result = await registerUser(
       {
         full_name: formData.full_name,
         email: formData.email,
         phone: formData.phone,
         commune_affectation: formData.commune_affectation,
       },
-      formData.password
+      formData.password,
+      formData.accessCode
     );
 
+    setWasAutoApproved(result.autoApproved);
     setSubmitted(true);
   };
 
@@ -51,35 +64,69 @@ export default function RegisterPage() {
             Créer un Compte Enquêteur
           </h1>
           <p className="text-xs sm:text-sm text-labal-gray-dark font-medium max-w-md mx-auto">
-            Plateforme Labal — Renseignez vos informations pour demander la création de votre compte d&apos;enquêteur terrain.
+            Plateforme Labal — Inscrivez-vous et saisissez votre code d&apos;équipe terrain pour activer immédiatement votre compte.
           </p>
         </div>
 
         {submitted ? (
-          <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center space-y-4 animate-slide-up">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto border border-emerald-300">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-black text-emerald-950">Demande d&apos;Inscription Soumise !</h2>
-            <p className="text-xs text-emerald-800 leading-relaxed font-medium">
-              Votre demande d&apos;inscription pour <strong className="text-labal-deep">{formData.full_name}</strong> ({formData.commune_affectation}) a été enregistrée avec succès. Un responsable examinera et débloquera votre compte sous peu.
-            </p>
+          wasAutoApproved ? (
+            <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center space-y-4 animate-slide-up">
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto border border-emerald-300">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-black border border-emerald-300">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                Validation Automatique Confirmée
+              </div>
+              <h2 className="text-xl font-black text-emerald-950">
+                Compte Enquêteur Activé Immédiatement !
+              </h2>
+              <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                Bienvenue <strong className="text-labal-deep">{formData.full_name}</strong> ({formData.commune_affectation}). Votre compte a été validé automatiquement sans attente et vous êtes déjà connecté.
+              </p>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/login"
-                className="px-6 py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all text-center"
-              >
-                Se Connecter
-              </Link>
-              <Link
-                href="/"
-                className="px-6 py-3 bg-white text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/15 hover:bg-labal-gray-light transition-all text-center"
-              >
-                Retour à l&apos;Accueil
-              </Link>
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  href="/enquete/pme"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all text-center"
+                >
+                  <ClipboardList className="w-4 h-4 text-labal-lime" />
+                  Démarrer une Enquête
+                </Link>
+                <Link
+                  href="/mes-enquetes"
+                  className="px-6 py-3 bg-white text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/15 hover:bg-labal-gray-light transition-all text-center"
+                >
+                  Mon Espace Enquêteur
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-center space-y-4 animate-slide-up">
+              <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto border border-amber-300">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-black text-amber-950">Demande d&apos;Inscription Enregistrée</h2>
+              <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                Votre compte pour <strong className="text-labal-deep">{formData.full_name}</strong> ({formData.commune_affectation}) a été créé sans code d&apos;accès terrain. Vous pouvez débloquer votre compte à tout moment avec le code d&apos;équipe ou attendre la validation d&apos;un administrateur.
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  href="/enquete/pme"
+                  className="px-6 py-3 bg-labal-deep text-white font-bold text-xs rounded-xl shadow-xs hover:bg-labal-deep/90 transition-all text-center"
+                >
+                  Saisir mon code d&apos;activation
+                </Link>
+                <Link
+                  href="/"
+                  className="px-6 py-3 bg-white text-labal-deep font-bold text-xs rounded-xl border border-labal-deep/15 hover:bg-labal-gray-light transition-all text-center"
+                >
+                  Retour à l&apos;Accueil
+                </Link>
+              </div>
+            </div>
+          )
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
@@ -157,11 +204,36 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Code d'Accès Terrain pour Validation Automatique sans intervention humaine */}
+            <div className="p-4 rounded-2xl bg-labal-lime/10 border border-labal-lime/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-black text-labal-deep">
+                  <KeyRound className="w-4 h-4 text-labal-lime" />
+                  Code d&apos;accès terrain (Activation immédiate)
+                </label>
+                <span className="px-2 py-0.5 rounded-full bg-labal-deep text-white text-[0.65rem] font-bold">
+                  Sans attente Admin
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Ex: LABAL2026"
+                value={formData.accessCode}
+                onChange={(e) => setFormData({ ...formData, accessCode: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-labal-deep/20 bg-white text-sm font-bold uppercase tracking-wider text-labal-deep focus:ring-2 focus:ring-labal-lime/50 focus:border-labal-deep transition-all"
+              />
+              <p className="text-[0.7rem] text-labal-gray-dark leading-relaxed">
+                {autoApproveAll
+                  ? "Le mode d'auto-validation ouverte est actif : votre compte sera activé automatiquement."
+                  : "Saisissez le code d'équipe communiqué par votre superviseur (ou utilisez un email @labal-guinee.org) pour activer votre compte instantanément sans intervention humaine."}
+              </p>
+            </div>
+
             <button
               type="submit"
               className="w-full py-4 bg-labal-deep text-white font-black text-sm rounded-xl shadow-md hover:bg-labal-deep/90 transition-all flex items-center justify-center gap-2 touch-target mt-2"
             >
-              Créer mon compte
+              Créer et activer mon compte
               <ArrowRight className="w-4 h-4 text-labal-lime" />
             </button>
           </form>

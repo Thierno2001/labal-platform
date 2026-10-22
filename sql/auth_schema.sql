@@ -85,11 +85,11 @@ CREATE POLICY self_read_profile ON public.profiles
   FOR SELECT
   USING (auth.uid() = id OR public.is_admin(auth.uid()));
 
--- RLS 3: Les nouveaux inscrits peuvent UNIQUEMENT créer leur compte avec le statut 'PENDING' et rôle 'ENQUETEUR'
+-- RLS 3: Les nouveaux inscrits peuvent créer leur compte avec le rôle 'ENQUETEUR' ('PENDING' ou 'APPROVED' si code terrain valide)
 CREATE POLICY anon_register_profile ON public.profiles
   FOR INSERT
   WITH CHECK (
-    status = 'PENDING' AND 
+    status IN ('PENDING', 'APPROVED') AND 
     role = 'ENQUETEUR'
   );
 

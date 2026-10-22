@@ -1,14 +1,29 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "labal-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const LOCAL_HISTORY_KEY = "labal_submitted_history_v1";
+
+export type FormType = "pme" | "menages" | "transit" | "autorites";
+
+export interface SubmittedSurveyRecord {
+  id: string;
+  formType: FormType;
+  label: string;
+  commune: string;
+  enqueteur_id?: string;
+  enqueteur_nom?: string;
+  enqueteur_email?: string;
+  createdAt: string;
+  syncStatus: "synced" | "pending";
+}
 
 interface LabalDB {
   drafts: {
     key: string;
     value: {
       id: string;
-      formType: "pme" | "menages" | "transit" | "autorites";
+      formType: FormType;
       data: Record<string, unknown>;
       currentStep: number;
       updatedAt: string;
@@ -18,7 +33,7 @@ interface LabalDB {
     key: string;
     value: {
       id: string;
-      formType: "pme" | "menages" | "transit" | "autorites";
+      formType: FormType;
       data: Record<string, unknown>;
       createdAt: string;
       retryCount: number;
@@ -44,12 +59,20 @@ function getDB() {
   return dbPromise;
 }
 
+// Legacy localStorage draft keys cleanup
+const LEGACY_DRAFT_KEYS: Record<FormType, string[]> = {
+  pme: ["labal_pme_draft"],
+  menages: ["labal_menages_draft"],
+  transit: ["labal_transit_form_draft"],
+  autorites: ["labal_autorites_draft"],
+};
+
 // ============================================================
 // Draft Operations (brouillons en cours de saisie)
 // ============================================================
 
 export async function saveDraft(
-  formType: "pme" | "menages" | "transit" | "autorites",
+  formType: FormType,
   data: Record<string, unknown>,
   currentStep: number
 ) {
@@ -64,14 +87,45 @@ export async function saveDraft(
   });
 }
 
-export async function getDraft(formType: "pme" | "menages" | "transit" | "autorites") {
+export async function getDraft(formType: FormType) {
   const db = await getDB();
-  return db.get("drafts", `draft-${formType}`);
+  const draft = await db.get("drafts", `draft-${formType}`);
+  if (draft) return draft;
+
+  // Migrate legacy localStorage draft if present
+  if (typeof window !== "undefined") {
+    for (const key of LEGACY_DRAFT_KEYS[formType] || []) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          localStorage.removeItem(key);
+          if (parsed && typeof parsed === "object") {
+            return {
+              id: `draft-${formType}`,
+              formType,
+              data: parsed as Record<string, unknown>,
+              currentStep: 0,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        } catch {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
-export async function deleteDraft(formType: "pme" | "menages" | "transit" | "autorites") {
+export async function deleteDraft(formType: FormType) {
   const db = await getDB();
   await db.delete("drafts", `draft-${formType}`);
+  if (typeof window !== "undefined") {
+    for (const key of LEGACY_DRAFT_KEYS[formType] || []) {
+      localStorage.removeItem(key);
+    }
+  }
 }
 
 export async function getAllDrafts() {
@@ -84,7 +138,7 @@ export async function getAllDrafts() {
 // ============================================================
 
 export async function addPendingSubmission(
-  formType: "pme" | "menages" | "transit" | "autorites",
+  formType: FormType,
   data: Record<string, unknown>
 ) {
   const db = await getDB();
@@ -115,5 +169,47 @@ export async function incrementRetryCount(id: string) {
   if (submission) {
     submission.retryCount += 1;
     await db.put("pending_submissions", submission);
+  }
+}
+
+// ============================================================
+// Local Submitted History (suivi personnel de l'enquêteur)
+// ============================================================
+
+export function getLocalSubmittedHistory(): SubmittedSurveyRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordLocalSubmission(record: SubmittedSurveyRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalSubmittedHistory().filter((r) => r.id !== record.id);
+    const updated = [record, ...existing].slice(0, 1000);
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("[Labal History] Failed to save local submission record", e);
+  }
+}
+
+export function markLocalSubmissionSynced(pendingId: string, serverId?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalSubmittedHistory();
+    const updated = existing.map((item) =>
+      item.id === pendingId
+        ? { ...item, id: serverId || item.id, syncStatus: "synced" as const }
+        : item
+    );
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
   }
 }

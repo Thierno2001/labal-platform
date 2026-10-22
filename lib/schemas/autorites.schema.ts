@@ -1,56 +1,58 @@
 import { z } from "zod";
-import {
-  COMMUNES,
-  ENTITE_AUTORITE_OPTIONS,
-  CAUSES_POINTS_NOIRS_OPTIONS,
-  FLOTTE_COMMUNALE_OPTIONS,
-  OBSTACLES_TRANSPORT_OPTIONS,
-  SOURCES_FINANCEMENT_OPTIONS,
-  FORMAT_CONSOLIDATION_OPTIONS,
-  BESOINS_DASHBOARD_OPTIONS,
-} from "../constants";
+
+const optStr = z.string().optional().nullable().or(z.literal(""));
+const optNum = z
+  .union([z.number(), z.string()])
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    const n = Number(val);
+    return isNaN(n) ? undefined : n;
+  });
 
 export const autoritesSchema = z.object({
   nom_repondant: z.string().min(2, "Le nom est requis"),
-  titre_fonction: z.string().optional(),
-  entite: z.enum(ENTITE_AUTORITE_OPTIONS, {
-    errorMap: () => ({ message: "Sélectionnez une entité" }),
-  }).optional(),
-  commune: z.enum(COMMUNES, {
-    errorMap: () => ({ message: "Sélectionnez une commune" }),
-  }).optional(),
-  nb_pme_conventionnees: z.number().min(0).optional().or(z.string().transform(val => val ? Number(val) : undefined)),
-  convention_conaag: z.string().optional(),
-  cahier_charges: z.string().optional(),
-  zonage_exclusif: z.string().optional(),
-  disponibilite_sig: z.string().optional(),
-  nb_points_noirs: z.number().min(0).optional().or(z.string().transform(val => val ? Number(val) : undefined)),
-  causes_points_noirs: z.array(z.enum(CAUSES_POINTS_NOIRS_OPTIONS)).default([]),
-  flotte_communale: z.array(z.enum(FLOTTE_COMMUNALE_OPTIONS)).default([]),
-  capacite_4_transferts: z.string().optional(),
-  mode_gestion_decharge: z.string().optional(),
-  obstacles_transport: z.array(z.enum(OBSTACLES_TRANSPORT_OPTIONS)).default([]),
-  sources_financement: z.array(z.enum(SOURCES_FINANCEMENT_OPTIONS)).default([]),
-  recouvrement_redevances: z.string().optional(),
-  canal_reclamations: z.string().optional(),
-  delai_resorption: z.string().optional(),
-  controles_inopines: z.string().optional(),
-  sanctions_recentes: z.string().optional(),
-  actions_education: z.string().optional(),
-  synergie_sanita: z.string().optional(),
-  projets_valorisation: z.string().optional(),
-  avis_suppression_liquide: z.string().optional(),
-  volonte_mobile_money_obligatoire: z.string().optional(),
-  correlation_ordures_maladies: z.string().optional(),
-  liens_centres_sante: z.string().optional(),
-  format_consolidation: z.enum(FORMAT_CONSOLIDATION_OPTIONS).optional(),
-  frequence_reporting: z.string().optional(),
-  ordinateurs_mairie: z.string().optional(),
-  smartphone_agents_terrain: z.string().optional(),
-  besoins_dashboard: z.array(z.enum(BESOINS_DASHBOARD_OPTIONS)).default([]),
-  point_focal_designe: z.string().optional(),
-  coordonnees_point_focal: z.string().optional(),
-  recommandations: z.string().optional(),
+  titre_fonction: optStr,
+  entite: optStr,
+  commune: optStr,
+  nb_pme_conventionnees: optNum,
+  convention_conaag: optStr,
+  cahier_charges: optStr,
+  zonage_exclusif: optStr,
+  disponibilite_sig: optStr,
+  nb_points_noirs: optNum,
+  causes_points_noirs: z.array(z.string()).default([]),
+  flotte_communale: z.array(z.string()).default([]),
+  capacite_4_transferts: optStr,
+  mode_gestion_decharge: optStr,
+  obstacles_transport: z.array(z.string()).default([]),
+  sources_financement: z.array(z.string()).default([]),
+  recouvrement_redevances: optStr,
+  canal_reclamations: optStr,
+  delai_resorption: optStr,
+  controles_inopines: optStr,
+  sanctions_recentes: optStr,
+  actions_education: optStr,
+  synergie_sanita: optStr,
+  projets_valorisation: optStr,
+  avis_suppression_liquide: optStr,
+  volonte_mobile_money_obligatoire: optStr,
+  correlation_ordures_maladies: optStr,
+  liens_centres_sante: optStr,
+  format_consolidation: optStr,
+  frequence_reporting: optStr,
+  ordinateurs_mairie: optStr,
+  smartphone_agents_terrain: optStr,
+  besoins_dashboard: z.array(z.string()).default([]),
+  point_focal_designe: optStr,
+  coordonnees_point_focal: optStr,
+  recommandations: optStr,
+
+  // Traçabilité Enquêteur
+  enqueteur_id: optStr,
+  enqueteur_nom: optStr,
+  enqueteur_email: optStr,
 });
 
 export type AutoritesFormData = z.infer<typeof autoritesSchema>;

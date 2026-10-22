@@ -530,3 +530,22 @@ CREATE POLICY "Allow public select on transit" ON enquetes_transit FOR SELECT US
 
 CREATE POLICY "Allow public insert on autorites" ON enquetes_autorites FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public select on autorites" ON enquetes_autorites FOR SELECT USING (true);
+
+-- ============================================================
+-- TRAÇABILITÉ ENQUÊTEUR TERRAIN (SUIVI PAR AGENT)
+-- ============================================================
+ALTER TABLE enquetes_pme ADD COLUMN IF NOT EXISTS enqueteur_id TEXT;
+ALTER TABLE enquetes_pme ADD COLUMN IF NOT EXISTS enqueteur_nom TEXT;
+ALTER TABLE enquetes_pme ADD COLUMN IF NOT EXISTS enqueteur_email TEXT;
+
+ALTER TABLE enquetes_menages ADD COLUMN IF NOT EXISTS enqueteur_id TEXT;
+ALTER TABLE enquetes_menages ADD COLUMN IF NOT EXISTS enqueteur_nom TEXT;
+ALTER TABLE enquetes_menages ADD COLUMN IF NOT EXISTS enqueteur_email TEXT;
+
+ALTER TABLE enquetes_transit ADD COLUMN IF NOT EXISTS enqueteur_id TEXT;
+ALTER TABLE enquetes_transit ADD COLUMN IF NOT EXISTS enqueteur_nom TEXT;
+ALTER TABLE enquetes_transit ADD COLUMN IF NOT EXISTS enqueteur_email TEXT;
+
+ALTER TABLE enquetes_autorites ADD COLUMN IF NOT EXISTS enqueteur_id TEXT;
+ALTER TABLE enquetes_autorites ADD COLUMN IF NOT EXISTS enqueteur_nom TEXT;
+ALTER TABLE enquetes_autorites ADD COLUMN IF NOT EXISTS enqueteur_email TEXT;

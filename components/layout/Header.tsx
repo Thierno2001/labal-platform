@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardList,
+  ClipboardCheck,
   Menu,
   X,
   Truck,
@@ -33,12 +34,12 @@ export function Header() {
   const isUserAdmin = currentUser?.role === "ADMIN";
 
   // Strict RBAC Navigation Items:
-  // Survey links are shown ONLY when user is logged in & approved!
   const navItems = [
     { href: "/enquete/pme", label: "PME Collecte", icon: Truck, show: isLoggedIn && isUserApproved },
     { href: "/enquete/menages", label: "Ménages", icon: HomeIcon, show: isLoggedIn && isUserApproved },
     { href: "/enquete/transit", label: "Zones Transit", icon: Recycle, show: isLoggedIn && isUserApproved },
     { href: "/enquete/autorites", label: "Autorités", icon: Building2, show: isLoggedIn && isUserApproved },
+    { href: "/mes-enquetes", label: "Mes Enquêtes", icon: ClipboardCheck, show: isLoggedIn && isUserApproved },
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: isLoggedIn && isUserApproved && isUserAdmin },
     { href: "/admin/users", label: "Administration", icon: ShieldCheck, show: isLoggedIn && isUserApproved && isUserAdmin },
   ];
@@ -77,7 +78,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1.5 p-1.5 bg-labal-gray-light/80 rounded-xl border border-labal-deep/5">
+          <nav className="hidden lg:flex items-center gap-1 p-1.5 bg-labal-gray-light/80 rounded-xl border border-labal-deep/5">
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
@@ -85,7 +86,7 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-white text-labal-deep shadow-sm border border-labal-deep/10 font-bold"
                       : "text-labal-gray-dark hover:text-labal-deep hover:bg-white/60"
@@ -99,7 +100,7 @@ export function Header() {
           </nav>
 
           {/* Auth & Profile Actions (Desktop) */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-2.5">
             {currentUser ? (
               /* Logged In Profile Menu */
               <div className="relative">
@@ -108,7 +109,7 @@ export function Header() {
                   className="flex items-center gap-2 px-3.5 py-2 bg-white rounded-xl border border-labal-deep/15 shadow-xs hover:border-labal-deep/30 transition-all text-xs font-bold text-labal-deep"
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-labal-lime animate-pulse" />
-                  <span className="max-w-[140px] truncate">{currentUser.full_name}</span>
+                  <span className="max-w-[130px] truncate">{currentUser.full_name}</span>
                   <span
                     className={`px-2 py-0.5 rounded-md text-[0.65rem] font-black ${
                       currentUser.role === "ADMIN"
@@ -141,6 +142,17 @@ export function Header() {
                     </div>
 
                     <div className="pt-1 flex flex-col gap-1">
+                      {isUserApproved && (
+                        <Link
+                          href="/mes-enquetes"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-labal-deep bg-labal-lime/15 hover:bg-labal-lime/25 border border-labal-lime/30 transition-colors"
+                        >
+                          <ClipboardCheck className="w-3.5 h-3.5 text-labal-deep" />
+                          Mes Enquêtes Réalisées
+                        </Link>
+                      )}
+
                       {isUserAdmin && (
                         <Link
                           href="/admin/users"

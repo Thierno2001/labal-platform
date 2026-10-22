@@ -1,47 +1,63 @@
 import * as z from "zod";
 
+const optStr = z.string().optional().nullable().or(z.literal(""));
+const optNum = z
+  .union([z.number(), z.string()])
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    const n = Number(val);
+    return isNaN(n) ? undefined : n;
+  });
+
 export const menagesSchema = z.object({
-  email: z.string().email().optional().or(z.literal("")),
+  email: optStr,
   nom_repondant: z.string().min(1, "Le nom du répondant est requis"),
-  nb_personnes_foyer: z.coerce.number().min(1).optional(),
-  type_habitation: z.string().optional(),
-  commune: z.string().optional(),
-  quartier: z.string().optional(),
-  reperes_visuels: z.string().optional(),
-  accessibilite: z.string().optional(),
-  mode_evacuation: z.string().optional(),
-  motif_non_abonne: z.string().optional(),
-  nom_pme_connue: z.string().optional(),
-  libre_choix_collecteur: z.string().optional(),
-  a_change_collecteur: z.string().optional(),
-  motifs_insatisfaction: z.array(z.string()).optional(),
-  nb_sacs_semaine: z.coerce.number().optional(),
-  typologie_dechets: z.array(z.string()).optional(),
-  alerte_ramassage_actuelle: z.string().optional(),
-  bacs_debordants_7_jours: z.string().optional(),
-  interet_bouton_commande: z.string().optional(),
-  respect_horaire: z.string().optional(),
-  notification_approche: z.string().optional(),
-  suivi_carte_temps_reel: z.string().optional(),
-  preuve_passage: z.string().optional(),
-  procedure_absence: z.string().optional(),
-  tri_actuel: z.string().optional(),
-  facteurs_stimulants: z.array(z.string()).optional(),
-  connaissance_risques: z.array(z.string()).optional(),
-  pret_modules_video: z.string().optional(),
-  montant_mensuel_gnf: z.coerce.number().optional(),
-  perception_qualite_prix: z.string().optional(),
-  mode_paiement: z.string().optional(),
-  recu_papier: z.string().optional(),
-  conflit_paiement: z.string().optional(),
-  nature_differend: z.string().optional(),
-  resolution_litige: z.string().optional(),
-  possession_smartphone: z.string().optional(),
-  frequence_mobile_money: z.string().optional(),
-  applications_favorites: z.string().optional(),
-  pret_installer_labal: z.string().optional(),
-  telephone_groupe_test: z.string().optional(),
-  suggestions_amelioration: z.string().optional(),
+  nb_personnes_foyer: optNum,
+  type_habitation: optStr,
+  commune: optStr,
+  quartier: optStr,
+  reperes_visuels: optStr,
+  accessibilite: optStr,
+  mode_evacuation: optStr,
+  motif_non_abonne: optStr,
+  nom_pme_connue: optStr,
+  libre_choix_collecteur: optStr,
+  a_change_collecteur: optStr,
+  motifs_insatisfaction: z.array(z.string()).optional().default([]),
+  nb_sacs_semaine: optNum,
+  typologie_dechets: z.array(z.string()).optional().default([]),
+  alerte_ramassage_actuelle: optStr,
+  bacs_debordants_7_jours: optStr,
+  interet_bouton_commande: optStr,
+  respect_horaire: optStr,
+  notification_approche: optStr,
+  suivi_carte_temps_reel: optStr,
+  preuve_passage: optStr,
+  procedure_absence: optStr,
+  tri_actuel: optStr,
+  facteurs_stimulants: z.array(z.string()).optional().default([]),
+  connaissance_risques: z.array(z.string()).optional().default([]),
+  pret_modules_video: optStr,
+  montant_mensuel_gnf: optNum,
+  perception_qualite_prix: optStr,
+  mode_paiement: optStr,
+  recu_papier: optStr,
+  conflit_paiement: optStr,
+  nature_differend: optStr,
+  resolution_litige: optStr,
+  possession_smartphone: optStr,
+  frequence_mobile_money: optStr,
+  applications_favorites: optStr,
+  pret_installer_labal: optStr,
+  telephone_groupe_test: optStr,
+  suggestions_amelioration: optStr,
+
+  // Traçabilité Enquêteur
+  enqueteur_id: optStr,
+  enqueteur_nom: optStr,
+  enqueteur_email: optStr,
 });
 
 export type MenagesFormData = z.infer<typeof menagesSchema>;
